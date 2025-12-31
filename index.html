@@ -1,6 +1,411 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fibo Drill - Ultimate Zoom</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* 1. ตั้งค่าหน้าจอ Full Screen + ห้าม Browser ยุ่ง */
+    body { 
+        background: #222; margin: 0; padding: 0; 
+        font-family: 'Sarabun', sans-serif; 
+        width: 100vw; height: 100vh; height: 100dvh; 
+        overflow: hidden; touch-action: none; /* ห้าม Browser มายุ่งกับการสัมผัส */
+    }
+    #game-container { 
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #333; 
+    }
+    canvas { 
+        display: block; width: 100%; height: 100%; 
+        cursor: crosshair; 
+        touch-action: none; /* ย้ำอีกทีว่าห้าม Browser ยุ่ง */
+    }
+
+    /* 2. แผงควบคุมลอย */
+    #control-area { 
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        width: 90%; max-width: 450px;
+        background: rgba(30,35,41,0.95); backdrop-filter: blur(10px);
+        border: 1px solid #fcd535; border-radius: 20px;
+        padding: 15px; z-index: 100;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
+    }
+    .question-text { font-size: 16px; font-weight: bold; color: #fff; margin: 0; text-align: center; }
+
+    /* ปุ่มสลับโหมด */
+    .mode-switch { display: flex; gap: 10px; background: #111; padding: 5px; border-radius: 12px; }
+    .mode-btn {
+        flex: 1; padding: 10px; border: none; border-radius: 8px;
+        font-family: 'Sarabun'; font-weight: bold; cursor: pointer; transition: 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 16px;
+    }
+    .mode-btn.active { background: #fcd535; color: #000; box-shadow: 0 2px 10px rgba(252, 213, 53, 0.3); }
+    .mode-btn.inactive { background: transparent; color: #888; }
+
+    /* ปุ่ม Reset View */
+    .reset-btn {
+        position: absolute; top: 15px; right: 15px;
+        background: rgba(0,0,0,0.6); color: white; border: 1px solid #555;
+        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; z-index: 200;
+    }
+    
+    /* ปุ่ม Reverse (ซ่อนอยู่ใน Reset Group หรือวางแยกก็ได้) */
+    .reverse-btn {
+        position: absolute; top: 15px; right: 120px; /* วางข้างๆ ปุ่ม Reset */
+        background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107;
+        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; z-index: 200;
+    }
+
+    /* Modal แจ้งผล */
+    #msg-modal {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.9); padding: 20px 40px; border-radius: 12px;
+        text-align: center; display: none; z-index: 300; border: 2px solid #fff;
+    }
+    .msg-success { border-color: #28a745 !important; color: #28a745; }
+    .msg-fail { border-color: #dc3545 !important; color: #dc3545; }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="quizCanvas"></canvas>
+    <button class="reverse-btn" onclick="toggleReverse()">🔁 กลับด้านFIBO</button>
+    <button class="reset-btn" onclick="resetView()">🔄 Reset View</button>
+</div>
+
+<div id="control-area">
+    <div id="questionText" class="question-text">Loading...</div>
+    <div class="mode-switch">
+        <button class="mode-btn active" id="btnHand" onclick="setMode('hand')">🖐️ เลื่อนจอ</button>
+        <button class="mode-btn inactive" id="btnPen" onclick="setMode('pen')">✏️ วาดเส้น</button>
+    </div>
+</div>
+
+<div id="msg-modal"><h1 id="msg-text" style="margin:0; font-size:32px;"></h1></div>
+
+<script>
+// ==========================================
+// 1. 📂 ข้อมูลโจทย์
+// ==========================================
+
+const steps = [
     {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง แบบสมบูรณ์",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  },
+      {
     "image": "fibo1.png", 
     "question": "จงตี Fibo ขาลง (Swing High -> Low)",
     "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
     "type": "down" 
   },
+      {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  },
+      {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  },
+      {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  },
+      {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  },
+      {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  },
+      {
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 460, "y1": 154, "x2": 501, "y2": 91  }, 
+    "type": "down" 
+  }
+
+]
+
+
+// ==========================================
+// 2. ระบบ Engine
+// ==========================================
+const canvas = document.getElementById('quizCanvas');
+const ctx = canvas.getContext('2d');
+const bgImage = new Image();
+const container = document.getElementById('game-container');
+
+let currentStepIdx = 0;
+let currentMode = 'hand'; 
+let isFiboReversed = false; // ✅ เพิ่มตัวแปรนี้กลับมา (สำคัญมาก!)
+
+// 📸 Camera State
+let camera = { x: 0, y: 0, z: 1 };
+let isPanning = false;
+let startPanCoord = { x: 0, y: 0 };
+
+// ✏️ Drawing State
+let isDrawing = false;
+let userLine = null; 
+let startDrawCoord = { x: 0, y: 0 }; 
+
+// Touch Zoom State
+let initialPinchDist = null;
+let lastCameraZ = 1;
+let pinchCenterWorld = { x:0, y:0 };
+
+window.onload = function() { loadStep(); };
+window.addEventListener('resize', () => { fitToScreen(); draw(); });
+
+function loadStep() {
+    if(currentStepIdx >= steps.length) { alert("🎉 จบเกม!"); location.href='dashboard.html'; return; }
+    const s = steps[currentStepIdx];
+    document.getElementById('questionText').innerText = `ข้อ ${currentStepIdx + 1}: ${s.question}`;
+    userLine = null;
+    isFiboReversed = false; // รีเซ็ตทุกครั้งที่เริ่มข้อใหม่
+    setMode('hand'); 
+    bgImage.src = s.image;
+    bgImage.onload = function() { resetView(); }
+}
+
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('btnHand').className = mode === 'hand' ? 'mode-btn active' : 'mode-btn inactive';
+    document.getElementById('btnPen').className = mode === 'pen' ? 'mode-btn active' : 'mode-btn inactive';
+}
+
+function toggleReverse() {
+    isFiboReversed = !isFiboReversed;
+    draw(); // วาดใหม่ทันที
+}
+
+function fitToScreen() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if(!bgImage.complete) return;
+    const scale = Math.min(canvas.width/bgImage.naturalWidth, canvas.height/bgImage.naturalHeight) * 0.95;
+    camera.z = scale;
+    camera.x = (canvas.width - bgImage.naturalWidth * scale) / 2;
+    camera.y = (canvas.height - bgImage.naturalHeight * scale) / 2;
+}
+function resetView() { fitToScreen(); draw(); }
+
+function getWorldPos(clientX, clientY) {
+    return {
+        x: (clientX - camera.x) / camera.z,
+        y: (clientY - camera.y) / camera.z
+    };
+}
+
+// ==========================================
+// 🖐️✏️ ระบบสัมผัส (Lock หน้าจอไม่ให้ย้วย)
+// ==========================================
+container.addEventListener('touchstart', handleStart, { passive: false });
+container.addEventListener('touchmove', handleMove, { passive: false });
+container.addEventListener('touchend', handleEnd);
+container.addEventListener('mousedown', handleStart);
+container.addEventListener('mousemove', handleMove);
+container.addEventListener('mouseup', handleEnd);
+container.addEventListener('wheel', handleWheel, { passive: false });
+
+function handleStart(e) {
+    e.preventDefault(); // ✅ ล็อกจอ ห้าม Browser ยุ่ง
+    const touches = e.touches;
+    const clientX = touches ? touches[0].clientX : e.clientX;
+    const clientY = touches ? touches[0].clientY : e.clientY;
+
+    if (touches && touches.length === 2) {
+        // 2 นิ้ว ซูม
+        isPanning = false; isDrawing = false;
+        initialPinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+        lastCameraZ = camera.z;
+        const midX = (touches[0].clientX + touches[1].clientX) / 2;
+        const midY = (touches[0].clientY + touches[1].clientY) / 2;
+        pinchCenterWorld = getWorldPos(midX, midY);
+    } else if (currentMode === 'hand') {
+        // 1 นิ้ว เลื่อน
+        isPanning = true;
+        startPanCoord = { x: clientX - camera.x, y: clientY - camera.y };
+    } else if (currentMode === 'pen') {
+        // 1 นิ้ว วาด
+        isDrawing = true;
+        startDrawCoord = getWorldPos(clientX, clientY);
+        userLine = { x1: startDrawCoord.x, y1: startDrawCoord.y, x2: startDrawCoord.x, y2: startDrawCoord.y };
+        draw();
+    }
+}
+
+function handleMove(e) {
+    e.preventDefault(); // ✅ ล็อกจอ ห้าม Browser ยุ่ง (สำคัญมาก!)
+    const touches = e.touches;
+    const clientX = touches ? touches[0].clientX : e.clientX;
+    const clientY = touches ? touches[0].clientY : e.clientY;
+
+    if (touches && touches.length === 2 && initialPinchDist) {
+        // ซูม
+        const dist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+        const newZoom = lastCameraZ * (dist / initialPinchDist);
+        if (newZoom > 0.1 && newZoom < 10) {
+            camera.z = newZoom;
+            const midX = (touches[0].clientX + touches[1].clientX) / 2;
+            const midY = (touches[0].clientY + touches[1].clientY) / 2;
+            camera.x = midX - pinchCenterWorld.x * camera.z;
+            camera.y = midY - pinchCenterWorld.y * camera.z;
+            draw();
+        }
+    } else if (isPanning) {
+        // เลื่อน
+        camera.x = clientX - startPanCoord.x;
+        camera.y = clientY - startPanCoord.y;
+        draw();
+    } else if (isDrawing) {
+        // วาด
+        const currWorld = getWorldPos(clientX, clientY);
+        userLine.x2 = currWorld.x;
+        userLine.y2 = currWorld.y;
+        draw();
+    }
+}
+
+function handleEnd(e) {
+    if(isDrawing) {
+        isDrawing = false;
+        checkAnswer();
+    }
+    isPanning = false;
+    if (e.touches && e.touches.length < 2) initialPinchDist = null;
+}
+
+function handleWheel(e) { e.preventDefault(); /* กัน Mouse Wheel ยุ่ง */ }
+
+// ==========================================
+// 🎨 ฟังก์ชันวาด (รวม Fibo Logic ใหม่)
+// ==========================================
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(camera.x, camera.y);
+    ctx.scale(camera.z, camera.z);
+
+    // วาดรูป
+    if(bgImage.complete && bgImage.naturalWidth > 0) {
+        ctx.drawImage(bgImage, 0, 0); 
+    }
+
+    // วาดเส้น user
+    if(userLine) {
+        const s = steps[currentStepIdx];
+        const color = s.type === 'down' ? '#dc3545' : '#28a745';
+        
+        ctx.beginPath(); 
+        ctx.moveTo(userLine.x1, userLine.y1); 
+        ctx.lineTo(userLine.x2, userLine.y2);
+        ctx.lineWidth = 4 / camera.z;
+        ctx.strokeStyle = color; 
+        ctx.stroke();
+
+        const radius = 8 / camera.z;
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(userLine.x1, userLine.y1, radius, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(userLine.x2, userLine.y2, radius, 0, Math.PI*2); ctx.fill();
+
+        drawFiboLevels(userLine, color);
+    }
+    ctx.restore();
+}
+
+function drawFiboLevels(line, color) {
+    // 161.8, 261.8, etc.
+    const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2.618, 4.236];
+    const worldRightEdge = (canvas.width - camera.x) / camera.z; 
+
+    // ✅ LOGIC: Standard TradingView (100 -> 0)
+    let p100, p0;
+    if (!isFiboReversed) {
+        p100 = {x: line.x1, y: line.y1}; 
+        p0   = {x: line.x2, y: line.y2}; 
+    } else {
+        p0   = {x: line.x1, y: line.y1}; 
+        p100 = {x: line.x2, y: line.y2}; 
+    }
+
+    const dx = p100.x - p0.x;
+    const dy = p100.y - p0.y;
+
+    levels.forEach(lvl => {
+        const my = p0.y + (dy * lvl);
+        const startX = Math.min(line.x1, line.x2);
+        
+        ctx.beginPath(); 
+        
+        if (lvl === 0 || lvl === 1 || lvl === 1.618) {
+            ctx.setLineDash([]); ctx.lineWidth = 1.5 / camera.z;
+        } else {
+            ctx.setLineDash([4/camera.z, 4/camera.z]); ctx.lineWidth = 1 / camera.z;
+        }
+        
+        ctx.strokeStyle = color;
+        ctx.moveTo(startX, my); 
+        ctx.lineTo(worldRightEdge + 5000, my); 
+        ctx.stroke();
+        
+        ctx.fillStyle = color;
+        ctx.font = `bold ${12/camera.z}px Arial`; 
+        ctx.textAlign = "right";
+        ctx.textBaseline = "bottom";
+        
+        let text = (lvl * 100).toFixed(1);
+        if (text.endsWith('.0')) text = text.replace('.0', ''); 
+        ctx.fillText(`${text}%`, startX - (5/camera.z), my - (2/camera.z));
+    });
+    ctx.setLineDash([]); 
+}
+
+// ==========================================
+// ✅ ระบบตรวจคำตอบ
+// ==========================================
+function checkAnswer() {
+    if(!userLine) return;
+    const ans = steps[currentStepIdx].answer;
+    const tolerance = 50; 
+
+    const distStart = Math.hypot(userLine.x1 - ans.x1, userLine.y1 - ans.y1);
+    const distEnd = Math.hypot(userLine.x2 - ans.x2, userLine.y2 - ans.y2);
+    const distStartRev = Math.hypot(userLine.x1 - ans.x2, userLine.y1 - ans.y2);
+    const distEndRev = Math.hypot(userLine.x2 - ans.x1, userLine.y2 - ans.y1);
+
+    if ((distStart < tolerance && distEnd < tolerance) || (distStartRev < tolerance && distEndRev < tolerance)) {
+        showMsg("✅ ถูกต้อง!", true);
+        setTimeout(() => { currentStepIdx++; loadStep(); hideMsg(); }, 1000);
+    } else {
+        showMsg("❌ ยังไม่แม่น!", false);
+        setTimeout(hideMsg, 1000);
+    }
+}
+
+function showMsg(text, isSuccess) {
+    const m = document.getElementById('msg-modal');
+    m.style.display = 'block'; m.className = isSuccess ? 'msg-success' : 'msg-fail';
+    document.getElementById('msg-text').innerText = text;
+}
+function hideMsg() { document.getElementById('msg-modal').style.display = 'none'; }
+</script>
+</body>
+</html>
