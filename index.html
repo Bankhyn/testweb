@@ -1,182 +1,238 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Ministry of Trader</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0; padding: 0;
-            font-family: 'Sarabun', sans-serif;
-            background-color: #0b0e11;
-            color: #eaecef;
-        }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Candle Drill - Select Number</title>
+  <style>
+    body { background: #222; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; overflow: hidden; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+    
+    #game-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    
+    /* พื้นที่กราฟ */
+    #game-container { position: relative; width: 100%; flex: 1; background: #333; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    #chart-box { position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    img.quiz-bg { display: block; width: 100%; height: 100%; }
+    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
 
-        /* Navbar */
-        nav {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 40px;
-            background: rgba(11, 14, 17, 0.95);
-            border-bottom: 1px solid #2b3139;
-            position: sticky; top: 0; z-index: 100;
-        }
-        .logo-container { display: flex; align-items: center; gap: 10px; }
-        .logo-img { height: 40px; width: auto; }
-        .logo-text { font-size: 20px; font-weight: bold; color: #fcd535; }
-        
-        .user-profile {
-            display: flex; align-items: center; gap: 10px;
-            font-size: 14px; color: #848e9c;
-        }
-        .avatar {
-            width: 35px; height: 35px; background: #2b3139; 
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            color: #fcd535; font-weight: bold; border: 1px solid #474d57;
-        }
+    /* พื้นที่ควบคุม */
+    #control-area { 
+        width: 100%; height: auto; min-height: 100px; 
+        background: #f8f9fa; border-top: 1px solid #444; 
+        display: flex; flex-direction: column; 
+        align-items: center; justify-content: center; 
+        padding: 10px; box-sizing: border-box; z-index: 100;
+    }
 
-        /* Container */
-        .container {
-            max-width: 1000px; /* ลดความกว้างรวมลงหน่อย ให้ดูสมส่วนกับ 2 คอลัมน์ */
-            margin: 0 auto; padding: 40px 20px;
-        }
+    .question-text { 
+        font-size: 16px; font-weight: bold; color: #333; 
+        margin-bottom: 10px; text-align: center;
+    }
 
-        /* Header */
-        .dashboard-header { margin-bottom: 40px; }
-        h2 { color: #fcd535; margin-bottom: 5px; font-size: 28px; }
-        p.sub-text { color: #848e9c; margin-top: 0; }
+    /* ปุ่มตัวเลข */
+    #choice-container {
+        display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;
+    }
+    .choice-btn {
+        width: 50px; height: 50px;
+        background: #333; color: #fcd535;
+        border: 2px solid #fcd535; border-radius: 50%;
+        font-size: 20px; font-weight: bold; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: 0.2s;
+    }
+    .choice-btn:active { transform: scale(0.9); background: #fcd535; color: #000; }
+    
+    /* สถานะถูกผิด */
+    .btn-correct { background: #28a745 !important; color: white !important; border-color: #28a745 !important; }
+    .btn-wrong { background: #dc3545 !important; color: white !important; border-color: #dc3545 !important; opacity: 0.5; }
 
-        /* Grid Layout (แก้ใหม่: บังคับ 2 คอลัมน์) */
-        .course-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); /* 👈 บังคับแบ่ง 2 ช่องเท่ากัน */
-            gap: 25px;
-        }
-
-        /* Card Design */
-        .course-card {
-            background: #1e2329;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid #2b3139;
-            transition: transform 0.2s, border-color 0.2s;
-            display: flex; flex-direction: column;
-        }
-        .course-card:hover {
-            transform: translateY(-5px);
-            border-color: #fcd535;
-        }
-
-        /* ส่วนหัวการ์ด */
-        .card-header {
-            height: 140px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 50px;
-            position: relative;
-        }
-        
-        /* สีพื้นหลังหัวการ์ด */
-        .bg-candle { background: linear-gradient(135deg, #ef5350, #26a69a); } 
-        .bg-fibo { background: linear-gradient(135deg, #B8860B, #FFD700); } 
-        .bg-mountain { background: linear-gradient(135deg, #6f42c1, #007bff); } 
-        .bg-full { background: linear-gradient(135deg, #f0b90b, #e83e8c); } 
-
-        .card-body { padding: 25px; flex: 1; display: flex; flex-direction: column; }
-        
-        h3 { margin: 0 0 10px 0; font-size: 18px; color: #fff; display: flex; align-items: center;}
-        p.desc { 
-            font-size: 14px; color: #848e9c; line-height: 1.6; margin-bottom: 25px; flex: 1;
-        }
-
-        /* ปุ่มเล่น */
-        .btn-play {
-            display: block; width: 100%; padding: 12px 0;
-            background: #2b3139; color: #eaecef; text-align: center;
-            border-radius: 6px; text-decoration: none; font-weight: bold; border: 1px solid #474d57;
-            transition: 0.2s; margin-top: auto; 
-        }
-        .btn-play:hover { background: #fcd535; color: #000; border-color: #fcd535; }
-        
-        /* ปุ่มไฮไลท์ (ด่าน 4) */
-        .btn-play.primary { background: #fcd535; color: #000; border: none; }
-        .btn-play.primary:hover { background: #e6c32f; }
-
-        /* Responsive: มือถือให้เรียง 1 แถวเหมือนเดิม */
-        @media (max-width: 768px) {
-            .course-grid { grid-template-columns: 1fr; } /* กลับมาเรียงเดี่ยวบนมือถือ */
-            nav { padding: 15px 20px; }
-            .container { padding: 20px; }
-            .card-header { height: 120px; font-size: 40px; }
-        }
-    </style>
+    /* Modal จบเกม */
+    #end-screen {
+        display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.9); z-index: 9999;
+        flex-direction: column; align-items: center; justify-content: center; color: white;
+    }
+  </style>
 </head>
 <body>
 
-    <nav>
-        <div class="logo-container">
-            <img src="logo.jpg" alt="Logo" class="logo-img">
-            <span class="logo-text">Ministry of Trader</span>
-        </div>
-        <div class="user-profile">
-            <span>Trader</span>
-            <div class="avatar">T</div>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="dashboard-header">
-            <h2>เลือกแบบฝึกหัด 🎯</h2>
-            <p class="sub-text">ฝึกฝนทักษะทีละขั้น และตะลุยโจทย์มากกว่า 100 บททดสอบ !!</p>
-        </div>
-
-        <div class="course-grid">
-
-            <div class="course-card">
-                <div class="card-header bg-candle">🕯️</div>
-                <div class="card-body">
-                    <h3>1. แท่งเทียนกลับตัว (Reversal)</h3>
-                    <p class="desc">
-                        แบบฝึกหัดแท่งเทียนกลับตัวในโซน Stochastic Oversold และ Overbought เพื่อหาจุดเข้าที่ได้เปรียบ
-                    </p>
-                    <a href="#" class="btn-play">เริ่มฝึก</a>
-                </div>
-            </div>
-
-            <div class="course-card">
-                <div class="card-header bg-fibo">📐</div>
-                <div class="card-body">
-                    <h3>2. การตี Fibo ขาขึ้น/ขาลง</h3>
-                    <p class="desc">
-                        ทบทวนการตี Fibo หัวขาขึ้นและขาลง ทั้งรูปแบบสมบูรณ์และแบบหักคอ เข้าใจแบบถ่องแท้
-                    </p>
-                    <a href="#" class="btn-play">เริ่มฝึก</a>
-                </div>
-            </div>
-
-            <div class="course-card">
-                <div class="card-header bg-mountain">🏔️</div>
-                <div class="card-body">
-                    <h3>3. เงื่อนไขตัดภูเขา 16 แบบ</h3>
-                    <p class="desc">
-                        เจาะลึกกฎการตัดภูเขา (ตัดกราฟ) ทั้ง 16 กรณี ทั้งขาขึ้นและขาลง เพื่อให้เข้าใจว่ากำลังรอหน้าเทรดไหนอยู่
-                    </p>
-                    <a href="#" class="btn-play">เริ่มฝึก</a>
-                </div>
-            </div>
-
-            <div class="course-card" style="border: 2px solid #fcd535;">
-                <div class="card-header bg-full">🚀</div>
-                <div class="card-body">
-                    <h3>4. แกะกราฟเต็มรอบ (Full Cycle)</h3>
-                    <p class="desc">
-                        บททดสอบใหญ่! แกะกราฟจริงตั้งแต่ต้นรอบขาขึ้น เปลี่ยนเทรนด์ จนจบขาลง (รวมทุกเทคนิค)
-                    </p>
-                    <a href="game.html" class="btn-play primary">🔥 ลุยด่านบอส</a>
-                </div>
-            </div>
-
-        </div>
+<div id="game-wrapper">
+  <div id="game-container">
+    <div id="chart-box">
+        <img src="" class="quiz-bg" id="bgImage">
+        <canvas id="quizCanvas"></canvas>
     </div>
+  </div>
 
+  <div id="control-area">
+    <div id="questionText" class="question-text">Loading...</div>
+    <div id="choice-container">
+        </div>
+  </div>
+</div>
+
+<div id="end-screen">
+    <h1>🎉 จบแบบฝึกหัด!</h1>
+    <button onclick="location.href='dashboard.html'" style="padding:10px 20px; font-size:18px; border-radius:50px; cursor:pointer;">กลับหน้าหลัก</button>
+</div>
+
+<script>
+// ==========================================
+// 1. 📂 ข้อมูลโจทย์ (แบบเลือกตอบ)
+// ==========================================
+const steps = [
+  // --- ข้อที่ 1 ---
+  {
+    "image": "candle1.png", 
+    "question": "จาก STO OB โซนสีส้ม แท่งเทียนไหนคือแท่งเทียนกลับตัว",
+    "choices": [
+       // ผมแกะเอาเฉพาะไส้ใน (x,y,w,h) ออกมาให้แล้วครับ
+       { "x": 1137, "y": 171, "w": 14, "h": 38 },
+       { "x": 1146, "y": 160, "w": 15, "h": 29 },
+       { "x": 1159, "y": 166, "w": 15, "h": 48 },
+       { "x": 1168, "y": 200, "w": 16, "h": 41 }
+    ],
+    // มี 4 ตัวเลือก (นับ 0, 1, 2, 3) 
+    // ถ้าเฉลยคืออันสุดท้าย ให้ใส่เลข 3 ครับ
+    "correctIndex": 3  
+  }
+];
+
+// ==========================================
+// 2. ระบบเกม
+// ==========================================
+const canvas = document.getElementById('quizCanvas');
+const ctx = canvas.getContext('2d');
+const bgImage = document.getElementById('bgImage');
+const chartBox = document.getElementById('chart-box');
+const gameContainer = document.getElementById('game-container');
+const choiceContainer = document.getElementById('choice-container');
+
+let currentStepIdx = 0;
+let scaleRatio = 1;
+
+window.onload = function() {
+    loadStep();
+    window.addEventListener('resize', resizeChart);
+};
+
+function loadStep() {
+    if(currentStepIdx >= steps.length) {
+        document.getElementById('end-screen').style.display = 'flex';
+        return;
+    }
+
+    const s = steps[currentStepIdx];
+    document.getElementById('questionText').innerText = `ข้อ ${currentStepIdx + 1}: ${s.question}`;
+    
+    // สร้างปุ่มกด
+    choiceContainer.innerHTML = "";
+    s.choices.forEach((_, index) => {
+        const btn = document.createElement("div");
+        btn.className = "choice-btn";
+        btn.innerText = index + 1;
+        btn.onclick = () => checkAnswer(index, btn);
+        choiceContainer.appendChild(btn);
+    });
+
+    bgImage.src = s.image;
+    bgImage.onload = function() { resizeChart(); }
+}
+
+function resizeChart() {
+    if(!bgImage.src) return;
+    const containerW = gameContainer.clientWidth;
+    const containerH = gameContainer.clientHeight;
+    const imgW = bgImage.naturalWidth;
+    const imgH = bgImage.naturalHeight;
+    scaleRatio = Math.min(containerW / imgW, containerH / imgH);
+    
+    chartBox.style.width = (imgW * scaleRatio) + 'px';
+    chartBox.style.height = (imgH * scaleRatio) + 'px';
+    canvas.width = imgW;
+    canvas.height = imgH;
+    draw();
+}
+
+// ==========================================
+// 🎨 ฟังก์ชันวาดรูป (V6: รุ่นคอยาว ไม่บังเพื่อนข้างๆ)
+// ==========================================
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const s = steps[currentStepIdx];
+
+    s.choices.forEach((box, index) => {
+        const centerX = box.x + (box.w / 2);
+        
+        // --- 🤖 Logic แยกบนล่าง ---
+        const isTop = (index % 2 === 0); 
+        
+        // 🚀 ปรับระยะห่าง (Gap) ให้ยืดออกไปอีก!
+        // ถ้าอยู่บน (Top) ให้ยืดเยอะหน่อย (50px) เพื่อหนีไส้เทียนข้างๆ
+        // ถ้าอยู่ล่าง (Bottom) เอาแค่ 35px ก็พอ
+        const gap = isTop ? 50 : 35; 
+        
+        let pinY;
+        let targetY; 
+
+        if (isTop) {
+            targetY = box.y; 
+            pinY = targetY - gap;
+        } else {
+            targetY = box.y + box.h;
+            pinY = targetY + gap;
+        }
+
+        // 1. วาดเส้นโยง (เส้นบางๆ ไม่บังตา)
+        ctx.beginPath();
+        ctx.moveTo(centerX, pinY);   
+        ctx.lineTo(centerX, targetY); 
+        ctx.lineWidth = 1.5;         
+        ctx.strokeStyle = "#fcd535"; 
+        ctx.stroke();
+
+        // 2. วาดพื้นหลังวงกลม
+        ctx.beginPath();
+        ctx.arc(centerX, pinY, 11, 0, 2 * Math.PI); // รัศมี 11px
+        ctx.fillStyle = "#1e2329"; 
+        ctx.fill();
+        
+        // 3. วาดขอบวงกลม
+        ctx.lineWidth = 1.5; 
+        ctx.strokeStyle = "#fcd535"; 
+        ctx.stroke();
+
+        // 4. วาดตัวเลข
+        ctx.fillStyle = "#fcd535"; 
+        ctx.font = "bold 13px Arial"; 
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(index + 1, centerX, pinY + 1); 
+    });
+}
+
+function checkAnswer(selectedIndex, btnElement) {
+    const s = steps[currentStepIdx];
+    
+    if(selectedIndex === s.correctIndex) {
+        // ✅ ถูก
+        btnElement.classList.add("btn-correct");
+        playSound(true);
+        setTimeout(() => {
+            currentStepIdx++;
+            loadStep();
+        }, 800);
+    } else {
+        // ❌ ผิด
+        btnElement.classList.add("btn-wrong");
+        playSound(false);
+    }
+}
+
+function playSound(isCorrect) {
+    // ใส่เสียงได้ถ้าต้องการ
+}
+</script>
 </body>
 </html>
