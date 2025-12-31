@@ -3,31 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Candle Drill - Free Zoom</title>
+  <title>Fibo Drill - Ultimate Zoom</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* 1. ตั้งค่าหน้าจอ: ตัดทุกอย่างทิ้งให้เหลือแต่ความว่างเปล่า */
+    /* 1. ตั้งค่าหน้าจอ Full Screen + ห้าม Browser ยุ่ง */
     body { 
         background: #222; margin: 0; padding: 0; 
         font-family: 'Sarabun', sans-serif; 
         width: 100vw; height: 100vh; height: 100dvh; 
-        overflow: hidden; /* ⛔ ห้ามมี Scrollbar เด็ดขาด */
-        touch-action: none; /* ⛔ ห้าม Browser เข้ามายุ่ง (สำคัญมาก!) */
+        overflow: hidden; touch-action: none; /* ห้าม Browser มายุ่งกับการสัมผัส */
     }
-
-    /* 2. พื้นที่วาดกราฟ: เต็มจอไปเลย */
     #game-container { 
-        position: absolute; top: 0; left: 0; 
-        width: 100%; height: 100%; 
-        background: #333; 
-        cursor: grab;
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #333; 
     }
-    #game-container:active { cursor: grabbing; }
+    canvas { 
+        display: block; width: 100%; height: 100%; 
+        cursor: crosshair; 
+        touch-action: none; /* ย้ำอีกทีว่าห้าม Browser ยุ่ง */
+    }
 
-    /* Canvas จะวาดเต็มจอ */
-    canvas { display: block; width: 100%; height: 100%; }
-
-    /* 3. แผงควบคุมลอย (Floating Control) */
+    /* 2. แผงควบคุมลอย */
     #control-area { 
         position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
         width: 90%; max-width: 450px;
@@ -35,60 +30,61 @@
         border: 1px solid #fcd535; border-radius: 20px;
         padding: 15px; z-index: 100;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        display: flex; flex-direction: column; align-items: center; gap: 10px;
-        pointer-events: auto; /* ให้กดปุ่มได้ */
+        display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
     }
+    .question-text { font-size: 16px; font-weight: bold; color: #fff; margin: 0; text-align: center; }
 
-    .question-text { 
-        font-size: 16px; font-weight: bold; color: #fff; 
-        margin: 0; text-align: center; text-shadow: 0 1px 2px black;
+    /* ปุ่มสลับโหมด */
+    .mode-switch { display: flex; gap: 10px; background: #111; padding: 5px; border-radius: 12px; }
+    .mode-btn {
+        flex: 1; padding: 10px; border: none; border-radius: 8px;
+        font-family: 'Sarabun'; font-weight: bold; cursor: pointer; transition: 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 16px;
     }
+    .mode-btn.active { background: #fcd535; color: #000; box-shadow: 0 2px 10px rgba(252, 213, 53, 0.3); }
+    .mode-btn.inactive { background: transparent; color: #888; }
 
-    #choice-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-    .choice-btn {
-        width: 45px; height: 45px;
-        background: #333; color: #fcd535;
-        border: 2px solid #fcd535; border-radius: 50%;
-        font-size: 18px; font-weight: bold; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        transition: 0.2s;
-    }
-    .choice-btn:active { transform: scale(0.9); background: #fcd535; color: #000; }
-    
-    .btn-correct { background: #28a745 !important; color: white !important; border-color: #28a745 !important; }
-    .btn-wrong { background: #dc3545 !important; color: white !important; border-color: #dc3545 !important; opacity: 0.5; }
-
-    /* ปุ่มรีเซ็ตมุมมอง (เผื่อซูมแล้วหาไม่เจอ) */
+    /* ปุ่ม Reset View */
     .reset-btn {
         position: absolute; top: 15px; right: 15px;
         background: rgba(0,0,0,0.6); color: white; border: 1px solid #555;
-        padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px;
-        z-index: 200;
+        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; z-index: 200;
+    }
+    
+    /* ปุ่ม Reverse (ซ่อนอยู่ใน Reset Group หรือวางแยกก็ได้) */
+    .reverse-btn {
+        position: absolute; top: 15px; right: 120px; /* วางข้างๆ ปุ่ม Reset */
+        background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107;
+        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; z-index: 200;
     }
 
-    #end-screen {
-        display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.9); z-index: 9999;
-        flex-direction: column; align-items: center; justify-content: center; color: white;
+    /* Modal แจ้งผล */
+    #msg-modal {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.9); padding: 20px 40px; border-radius: 12px;
+        text-align: center; display: none; z-index: 300; border: 2px solid #fff;
     }
+    .msg-success { border-color: #28a745 !important; color: #28a745; }
+    .msg-fail { border-color: #dc3545 !important; color: #dc3545; }
   </style>
 </head>
 <body>
 
 <div id="game-container">
     <canvas id="quizCanvas"></canvas>
+    <button class="reverse-btn" onclick="toggleReverse()">🔁 กลับด้าน</button>
     <button class="reset-btn" onclick="resetView()">🔄 Reset View</button>
 </div>
 
 <div id="control-area">
     <div id="questionText" class="question-text">Loading...</div>
-    <div id="choice-container"></div>
+    <div class="mode-switch">
+        <button class="mode-btn active" id="btnHand" onclick="setMode('hand')">🖐️ เลื่อนจอ</button>
+        <button class="mode-btn inactive" id="btnPen" onclick="setMode('pen')">✏️ วาดเส้น</button>
+    </div>
 </div>
 
-<div id="end-screen">
-    <h1>🎉 จบแบบฝึกหัด!</h1>
-    <button onclick="location.href='dashboard.html'" style="padding:10px 20px; font-size:18px; border-radius:50px; cursor:pointer;">กลับหน้าหลัก</button>
-</div>
+<div id="msg-modal"><h1 id="msg-text" style="margin:0; font-size:32px;"></h1></div>
 
 <script>
 // ==========================================
@@ -96,270 +92,275 @@
 // ==========================================
 const steps = [
   {
-    "image": "candle1.png", 
-    "question": "จาก STO OB โซนสีส้ม แท่งเทียนไหนคือแท่งเทียนกลับตัว",
-    "choices": [
-       { "x": 1137, "y": 171, "w": 14, "h": 38 },
-       { "x": 1146, "y": 160, "w": 15, "h": 29 },
-       { "x": 1159, "y": 166, "w": 15, "h": 48 },
-       { "x": 1168, "y": 200, "w": 16, "h": 41 }
-    ],
-    "correctIndex": 3  
+    "image": "fibo1.png", 
+    "question": "จงตี Fibo ขาลง (Swing High -> Low)",
+    "answer": { "x1": 200, "y1": 100, "x2": 400, "y2": 500 }, 
+    "type": "down" 
   }
 ];
 
 // ==========================================
-// 2. ระบบเกม Engine (Canvas Camera)
+// 2. ระบบ Engine
 // ==========================================
 const canvas = document.getElementById('quizCanvas');
 const ctx = canvas.getContext('2d');
-const bgImage = new Image(); // สร้าง Image Object รอไว้เลย
+const bgImage = new Image();
 const container = document.getElementById('game-container');
-const choiceContainer = document.getElementById('choice-container');
 
 let currentStepIdx = 0;
+let currentMode = 'hand'; 
+let isFiboReversed = false; // ✅ เพิ่มตัวแปรนี้กลับมา (สำคัญมาก!)
 
-// 📸 Camera State (ตัวแปรควบคุมมุมกล้อง)
-let camera = { x: 0, y: 0, z: 1 }; 
-let isDragging = false;
-let startPan = { x: 0, y: 0 };
-let lastZoomCenter = { x: 0, y: 0 };
+// 📸 Camera State
+let camera = { x: 0, y: 0, z: 1 };
+let isPanning = false;
+let startPanCoord = { x: 0, y: 0 };
 
-// Touch State
+// ✏️ Drawing State
+let isDrawing = false;
+let userLine = null; 
+let startDrawCoord = { x: 0, y: 0 }; 
+
+// Touch Zoom State
 let initialPinchDist = null;
 let lastCameraZ = 1;
+let pinchCenterWorld = { x:0, y:0 };
 
 window.onload = function() { loadStep(); };
-window.addEventListener('resize', () => { 
-    fitToScreen(); 
-    draw(); 
-});
+window.addEventListener('resize', () => { fitToScreen(); draw(); });
 
 function loadStep() {
-    if(currentStepIdx >= steps.length) {
-        document.getElementById('end-screen').style.display = 'flex';
-        return;
-    }
+    if(currentStepIdx >= steps.length) { alert("🎉 จบเกม!"); location.href='dashboard.html'; return; }
     const s = steps[currentStepIdx];
     document.getElementById('questionText').innerText = `ข้อ ${currentStepIdx + 1}: ${s.question}`;
-    
-    choiceContainer.innerHTML = "";
-    s.choices.forEach((_, index) => {
-        const btn = document.createElement("div");
-        btn.className = "choice-btn";
-        btn.innerText = index + 1;
-        btn.onclick = () => checkAnswer(index, btn);
-        choiceContainer.appendChild(btn);
-    });
-
+    userLine = null;
+    isFiboReversed = false; // รีเซ็ตทุกครั้งที่เริ่มข้อใหม่
+    setMode('hand'); 
     bgImage.src = s.image;
-    bgImage.onload = function() { 
-        resetView(); // รีเซ็ตมุมกล้องให้พอดีจอทุกครั้งที่เริ่มข้อใหม่
-    }
+    bgImage.onload = function() { resetView(); }
 }
 
-// ฟังก์ชันจัดภาพให้อยู่กลางจอตอนเริ่ม
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('btnHand').className = mode === 'hand' ? 'mode-btn active' : 'mode-btn inactive';
+    document.getElementById('btnPen').className = mode === 'pen' ? 'mode-btn active' : 'mode-btn inactive';
+}
+
+function toggleReverse() {
+    isFiboReversed = !isFiboReversed;
+    draw(); // วาดใหม่ทันที
+}
+
 function fitToScreen() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    
     if(!bgImage.complete) return;
-
-    // คำนวณ Scale ให้พอดีจอ (Fit Contain)
-    const scaleW = canvas.width / bgImage.naturalWidth;
-    const scaleH = canvas.height / bgImage.naturalHeight;
-    const scale = Math.min(scaleW, scaleH) * 0.9; // *0.9 ให้เหลือขอบนิดหน่อย
-
+    const scale = Math.min(canvas.width/bgImage.naturalWidth, canvas.height/bgImage.naturalHeight) * 0.95;
     camera.z = scale;
-    // จัดกึ่งกลาง
     camera.x = (canvas.width - bgImage.naturalWidth * scale) / 2;
     camera.y = (canvas.height - bgImage.naturalHeight * scale) / 2;
 }
+function resetView() { fitToScreen(); draw(); }
 
-function resetView() {
-    fitToScreen();
-    draw();
-}
-
-// ==========================================
-// 🖐️ ระบบสัมผัส (Touch Logic - หัวใจสำคัญ)
-// ==========================================
-container.addEventListener('touchstart', handleTouchStart, { passive: false });
-container.addEventListener('touchmove', handleTouchMove, { passive: false });
-container.addEventListener('touchend', handleTouchEnd);
-
-// รองรับ Mouse (เผื่อเทสในคอม)
-container.addEventListener('mousedown', handleMouseDown);
-container.addEventListener('mousemove', handleMouseMove);
-container.addEventListener('mouseup', handleMouseUp);
-container.addEventListener('wheel', handleWheel, { passive: false });
-
-function handleTouchStart(e) {
-    if(e.touches.length === 1) {
-        // 1 นิ้ว = เริ่มลาก (Pan)
-        isDragging = true;
-        startPan = { x: e.touches[0].clientX - camera.x, y: e.touches[0].clientY - camera.y };
-    } else if (e.touches.length === 2) {
-        // 2 นิ้ว = เริ่มซูม (Pinch)
-        isDragging = false; // หยุดลากชั่วคราว
-        initialPinchDist = getPinchDist(e);
-        lastCameraZ = camera.z;
-        // หาจุดกึ่งกลางระหว่าง 2 นิ้ว เพื่อซูมเข้าหามัน
-        lastZoomCenter = getPinchCenter(e); 
-    }
-}
-
-function handleTouchMove(e) {
-    e.preventDefault(); // ⛔ ห้าม Safari เลื่อนจอ
-    
-    if(e.touches.length === 1 && isDragging) {
-        // ลาก (Pan)
-        camera.x = e.touches[0].clientX - startPan.x;
-        camera.y = e.touches[0].clientY - startPan.y;
-        draw();
-    } else if (e.touches.length === 2 && initialPinchDist) {
-        // ซูม (Pinch Zoom)
-        const currentDist = getPinchDist(e);
-        const zoomFactor = currentDist / initialPinchDist;
-        
-        // คำนวณ Zoom ใหม่
-        const newZoom = lastCameraZ * zoomFactor;
-        
-        // จำกัดการซูม (ไม่ให้เล็กเกินไป หรือใหญ่เกินไป)
-        if (newZoom > 0.1 && newZoom < 5) {
-            // สูตรคำนวณ Zoom Towards Point (ยากนิดนึงแต่ลื่น)
-            // 1. หาตำแหน่งเมาส์เทียบกับโลกจริงก่อนซูม
-            const worldX = (lastZoomCenter.x - camera.x) / camera.z;
-            const worldY = (lastZoomCenter.y - camera.y) / camera.z;
-            
-            // 2. อัปเดต Zoom
-            camera.z = newZoom;
-            
-            // 3. ปรับ camera.x,y กลับคืน เพื่อให้จุดเดิมยังอยู่ที่เดิม
-            // (คำนวณย้อนกลับจาก world coordinate)
-            const newCenter = getPinchCenter(e); // จุดกลางนิ้วอาจขยับ
-            camera.x = newCenter.x - worldX * camera.z;
-            camera.y = newCenter.y - worldY * camera.z;
-            
-            draw();
-        }
-    }
-}
-
-function handleTouchEnd(e) {
-    isDragging = false;
-    if (e.touches.length < 2) {
-        initialPinchDist = null;
-    }
-}
-
-// คำนวณระยะห่างนิ้ว (Pythagoras)
-function getPinchDist(e) {
-    return Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-    );
-}
-// คำนวณจุดกึ่งกลางระหว่าง 2 นิ้ว
-function getPinchCenter(e) {
+function getWorldPos(clientX, clientY) {
     return {
-        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+        x: (clientX - camera.x) / camera.z,
+        y: (clientY - camera.y) / camera.z
     };
 }
 
-// --- Mouse Events (สำหรับ PC) ---
-function handleMouseDown(e) {
-    isDragging = true;
-    startPan = { x: e.clientX - camera.x, y: e.clientY - camera.y };
-}
-function handleMouseMove(e) {
-    if (!isDragging) return;
-    camera.x = e.clientX - startPan.x;
-    camera.y = e.clientY - startPan.y;
-    draw();
-}
-function handleMouseUp() { isDragging = false; }
-function handleWheel(e) {
-    e.preventDefault();
-    const zoomIntensity = 0.1;
-    const scroll = e.deltaY < 0 ? 1 : -1;
-    const zoomFactor = Math.exp(scroll * zoomIntensity);
-    
-    const newZoom = camera.z * zoomFactor;
-    if (newZoom < 0.1 || newZoom > 5) return;
+// ==========================================
+// 🖐️✏️ ระบบสัมผัส (Lock หน้าจอไม่ให้ย้วย)
+// ==========================================
+container.addEventListener('touchstart', handleStart, { passive: false });
+container.addEventListener('touchmove', handleMove, { passive: false });
+container.addEventListener('touchend', handleEnd);
+container.addEventListener('mousedown', handleStart);
+container.addEventListener('mousemove', handleMove);
+container.addEventListener('mouseup', handleEnd);
+container.addEventListener('wheel', handleWheel, { passive: false });
 
-    // Zoom Towards Mouse Position
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
-    const worldX = (mouseX - camera.x) / camera.z;
-    const worldY = (mouseY - camera.y) / camera.z;
+function handleStart(e) {
+    e.preventDefault(); // ✅ ล็อกจอ ห้าม Browser ยุ่ง
+    const touches = e.touches;
+    const clientX = touches ? touches[0].clientX : e.clientX;
+    const clientY = touches ? touches[0].clientY : e.clientY;
 
-    camera.z = newZoom;
-    camera.x = mouseX - worldX * camera.z;
-    camera.y = mouseY - worldY * camera.z;
-    
-    draw();
+    if (touches && touches.length === 2) {
+        // 2 นิ้ว ซูม
+        isPanning = false; isDrawing = false;
+        initialPinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+        lastCameraZ = camera.z;
+        const midX = (touches[0].clientX + touches[1].clientX) / 2;
+        const midY = (touches[0].clientY + touches[1].clientY) / 2;
+        pinchCenterWorld = getWorldPos(midX, midY);
+    } else if (currentMode === 'hand') {
+        // 1 นิ้ว เลื่อน
+        isPanning = true;
+        startPanCoord = { x: clientX - camera.x, y: clientY - camera.y };
+    } else if (currentMode === 'pen') {
+        // 1 นิ้ว วาด
+        isDrawing = true;
+        startDrawCoord = getWorldPos(clientX, clientY);
+        userLine = { x1: startDrawCoord.x, y1: startDrawCoord.y, x2: startDrawCoord.x, y2: startDrawCoord.y };
+        draw();
+    }
 }
+
+function handleMove(e) {
+    e.preventDefault(); // ✅ ล็อกจอ ห้าม Browser ยุ่ง (สำคัญมาก!)
+    const touches = e.touches;
+    const clientX = touches ? touches[0].clientX : e.clientX;
+    const clientY = touches ? touches[0].clientY : e.clientY;
+
+    if (touches && touches.length === 2 && initialPinchDist) {
+        // ซูม
+        const dist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+        const newZoom = lastCameraZ * (dist / initialPinchDist);
+        if (newZoom > 0.1 && newZoom < 10) {
+            camera.z = newZoom;
+            const midX = (touches[0].clientX + touches[1].clientX) / 2;
+            const midY = (touches[0].clientY + touches[1].clientY) / 2;
+            camera.x = midX - pinchCenterWorld.x * camera.z;
+            camera.y = midY - pinchCenterWorld.y * camera.z;
+            draw();
+        }
+    } else if (isPanning) {
+        // เลื่อน
+        camera.x = clientX - startPanCoord.x;
+        camera.y = clientY - startPanCoord.y;
+        draw();
+    } else if (isDrawing) {
+        // วาด
+        const currWorld = getWorldPos(clientX, clientY);
+        userLine.x2 = currWorld.x;
+        userLine.y2 = currWorld.y;
+        draw();
+    }
+}
+
+function handleEnd(e) {
+    if(isDrawing) {
+        isDrawing = false;
+        checkAnswer();
+    }
+    isPanning = false;
+    if (e.touches && e.touches.length < 2) initialPinchDist = null;
+}
+
+function handleWheel(e) { e.preventDefault(); /* กัน Mouse Wheel ยุ่ง */ }
 
 // ==========================================
-// 🎨 ฟังก์ชันวาดรูป (วาดตามมุมกล้อง)
+// 🎨 ฟังก์ชันวาด (รวม Fibo Logic ใหม่)
 // ==========================================
 function draw() {
-    // 1. ล้างหน้าจอ
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 2. บันทึกสถานะเดิมไว้
     ctx.save();
-    
-    // 3. ย้ายกล้อง (Transform Matrix)
     ctx.translate(camera.x, camera.y);
     ctx.scale(camera.z, camera.z);
 
-    // 4. วาดรูป Background
-    if(bgImage.complete) {
-        ctx.drawImage(bgImage, 0, 0);
+    // วาดรูป
+    if(bgImage.complete && bgImage.naturalWidth > 0) {
+        ctx.drawImage(bgImage, 0, 0); 
     }
 
-    // 5. วาดหมุดต่างๆ (โค้ดเดิม แต่ตอนนี้มันจะขยับตามกล้องเองอัตโนมัติ!)
-    const s = steps[currentStepIdx];
-    s.choices.forEach((box, index) => {
-        const centerX = box.x + (box.w / 2);
+    // วาดเส้น user
+    if(userLine) {
+        const s = steps[currentStepIdx];
+        const color = s.type === 'down' ? '#dc3545' : '#28a745';
         
-        // Logic แยกบนล่าง (เหมือนเดิม)
-        const isTop = (index % 2 === 0); 
-        const gap = isTop ? 50 : 35; 
-        
-        let pinY, targetY; 
-        if (isTop) { targetY = box.y; pinY = targetY - gap; } 
-        else { targetY = box.y + box.h; pinY = targetY + gap; }
+        ctx.beginPath(); 
+        ctx.moveTo(userLine.x1, userLine.y1); 
+        ctx.lineTo(userLine.x2, userLine.y2);
+        ctx.lineWidth = 4 / camera.z;
+        ctx.strokeStyle = color; 
+        ctx.stroke();
 
-        ctx.beginPath(); ctx.moveTo(centerX, pinY); ctx.lineTo(centerX, targetY); 
-        ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke(); // เส้นจะหนาขึ้นเมื่อซูม (ถ้าไม่อยากให้หนาต้องหาร camera.z)
+        const radius = 8 / camera.z;
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(userLine.x1, userLine.y1, radius, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(userLine.x2, userLine.y2, radius, 0, Math.PI*2); ctx.fill();
 
-        ctx.beginPath(); ctx.arc(centerX, pinY, 11, 0, 2 * Math.PI); 
-        ctx.fillStyle = "#1e2329"; ctx.fill();
-        ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke();
-
-        ctx.fillStyle = "#fcd535"; ctx.font = "bold 13px Arial"; 
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        // พลิกกลับ Text ไม่ให้กลับหัว (กรณีซูมแปลกๆ) แต่ scale ปกติไม่ต้องแก้
-        ctx.fillText(index + 1, centerX, pinY + 1); 
-    });
-
-    // 6. จบการวาด Restore กลับ
+        drawFiboLevels(userLine, color);
+    }
     ctx.restore();
 }
 
-function checkAnswer(selectedIndex, btnElement) {
-    const s = steps[currentStepIdx];
-    if(selectedIndex === s.correctIndex) {
-        btnElement.classList.add("btn-correct");
-        setTimeout(() => { currentStepIdx++; loadStep(); }, 800);
+function drawFiboLevels(line, color) {
+    // 161.8, 261.8, etc.
+    const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2.618, 4.236];
+    const worldRightEdge = (canvas.width - camera.x) / camera.z; 
+
+    // ✅ LOGIC: Standard TradingView (100 -> 0)
+    let p100, p0;
+    if (!isFiboReversed) {
+        p100 = {x: line.x1, y: line.y1}; 
+        p0   = {x: line.x2, y: line.y2}; 
     } else {
-        btnElement.classList.add("btn-wrong");
+        p0   = {x: line.x1, y: line.y1}; 
+        p100 = {x: line.x2, y: line.y2}; 
+    }
+
+    const dx = p100.x - p0.x;
+    const dy = p100.y - p0.y;
+
+    levels.forEach(lvl => {
+        const my = p0.y + (dy * lvl);
+        const startX = Math.min(line.x1, line.x2);
+        
+        ctx.beginPath(); 
+        
+        if (lvl === 0 || lvl === 1 || lvl === 1.618) {
+            ctx.setLineDash([]); ctx.lineWidth = 1.5 / camera.z;
+        } else {
+            ctx.setLineDash([4/camera.z, 4/camera.z]); ctx.lineWidth = 1 / camera.z;
+        }
+        
+        ctx.strokeStyle = color;
+        ctx.moveTo(startX, my); 
+        ctx.lineTo(worldRightEdge + 5000, my); 
+        ctx.stroke();
+        
+        ctx.fillStyle = color;
+        ctx.font = `bold ${12/camera.z}px Arial`; 
+        ctx.textAlign = "right";
+        ctx.textBaseline = "bottom";
+        
+        let text = (lvl * 100).toFixed(1);
+        if (text.endsWith('.0')) text = text.replace('.0', ''); 
+        ctx.fillText(`${text}%`, startX - (5/camera.z), my - (2/camera.z));
+    });
+    ctx.setLineDash([]); 
+}
+
+// ==========================================
+// ✅ ระบบตรวจคำตอบ
+// ==========================================
+function checkAnswer() {
+    if(!userLine) return;
+    const ans = steps[currentStepIdx].answer;
+    const tolerance = 50; 
+
+    const distStart = Math.hypot(userLine.x1 - ans.x1, userLine.y1 - ans.y1);
+    const distEnd = Math.hypot(userLine.x2 - ans.x2, userLine.y2 - ans.y2);
+    const distStartRev = Math.hypot(userLine.x1 - ans.x2, userLine.y1 - ans.y2);
+    const distEndRev = Math.hypot(userLine.x2 - ans.x1, userLine.y2 - ans.y1);
+
+    if ((distStart < tolerance && distEnd < tolerance) || (distStartRev < tolerance && distEndRev < tolerance)) {
+        showMsg("✅ ถูกต้อง!", true);
+        setTimeout(() => { currentStepIdx++; loadStep(); hideMsg(); }, 1000);
+    } else {
+        showMsg("❌ ยังไม่แม่น!", false);
+        setTimeout(hideMsg, 1000);
     }
 }
+
+function showMsg(text, isSuccess) {
+    const m = document.getElementById('msg-modal');
+    m.style.display = 'block'; m.className = isSuccess ? 'msg-success' : 'msg-fail';
+    document.getElementById('msg-text').innerText = text;
+}
+function hideMsg() { document.getElementById('msg-modal').style.display = 'none'; }
 </script>
 </body>
 </html>
