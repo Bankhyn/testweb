@@ -3,40 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Candle Drill - Zoom Edition</title>
+  <title>Candle Drill - Free Zoom</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* 1. ตั้งค่าหน้าจอไม่ให้ขยับกวนใจ */
+    /* 1. ตั้งค่าหน้าจอ: ตัดทุกอย่างทิ้งให้เหลือแต่ความว่างเปล่า */
     body { 
         background: #222; margin: 0; padding: 0; 
         font-family: 'Sarabun', sans-serif; 
-        overflow: hidden; /* ห้ามเลื่อนทั้งหน้า */
-        width: 100vw; 
-        height: 100vh; height: 100dvh; /* แก้ Safari บัง */
-        display: flex; flex-direction: column; 
-        touch-action: none; /* ห้าม Browser มายุ่งกับการสัมผัส */
+        width: 100vw; height: 100vh; height: 100dvh; 
+        overflow: hidden; /* ⛔ ห้ามมี Scrollbar เด็ดขาด */
+        touch-action: none; /* ⛔ ห้าม Browser เข้ามายุ่ง (สำคัญมาก!) */
     }
-    
-    #game-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; }
-    
-    /* 2. พื้นที่กราฟ (อนุญาตให้เลื่อนซ้ายขวาได้เฉพาะตรงนี้) */
+
+    /* 2. พื้นที่วาดกราฟ: เต็มจอไปเลย */
     #game-container { 
-        flex: 1; 
-        width: 100%; 
+        position: absolute; top: 0; left: 0; 
+        width: 100%; height: 100%; 
         background: #333; 
-        overflow: auto; /* ✅ ยอมให้ Scroll ได้ */
-        display: flex; 
-        align-items: center; /* จัดกลางแนวตั้ง */
-        justify-content: flex-start; /* เริ่มจากซ้ายเสมอ */
-        -webkit-overflow-scrolling: touch; /* ลื่นๆ แบบ iOS */
-        touch-action: pan-x pan-y; /* อนุญาตให้ปัดเลื่อนได้ */
-        padding-bottom: 150px; /* เผื่อที่ให้ปุ่มลอยข้างล่าง */
+        cursor: grab;
     }
-    
-    /* กล่องใส่กราฟ */
-    #chart-box { position: relative; transition: width 0.1s; /* ซูมสมูทๆ */ }
-    img.quiz-bg { display: block; height: 100%; width: 100%; pointer-events: none; }
-    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
+    #game-container:active { cursor: grabbing; }
+
+    /* Canvas จะวาดเต็มจอ */
+    canvas { display: block; width: 100%; height: 100%; }
 
     /* 3. แผงควบคุมลอย (Floating Control) */
     #control-area { 
@@ -47,6 +36,7 @@
         padding: 15px; z-index: 100;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         display: flex; flex-direction: column; align-items: center; gap: 10px;
+        pointer-events: auto; /* ให้กดปุ่มได้ */
     }
 
     .question-text { 
@@ -54,7 +44,6 @@
         margin: 0; text-align: center; text-shadow: 0 1px 2px black;
     }
 
-    /* ปุ่มตัวเลข */
     #choice-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
     .choice-btn {
         width: 45px; height: 45px;
@@ -66,25 +55,17 @@
     }
     .choice-btn:active { transform: scale(0.9); background: #fcd535; color: #000; }
     
-    /* สถานะถูกผิด */
     .btn-correct { background: #28a745 !important; color: white !important; border-color: #28a745 !important; }
     .btn-wrong { background: #dc3545 !important; color: white !important; border-color: #dc3545 !important; opacity: 0.5; }
 
-    /* 4. แถบซูม (Zoom Slider) */
-    .zoom-controls {
-        display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 5px;
-        padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);
-    }
-    .zoom-icon { font-size: 14px; color: #888; }
-    input[type=range] {
-        flex: 1; -webkit-appearance: none; height: 4px; background: #555; border-radius: 2px;
-    }
-    input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none; width: 20px; height: 20px; 
-        background: #fcd535; border-radius: 50%; cursor: pointer;
+    /* ปุ่มรีเซ็ตมุมมอง (เผื่อซูมแล้วหาไม่เจอ) */
+    .reset-btn {
+        position: absolute; top: 15px; right: 15px;
+        background: rgba(0,0,0,0.6); color: white; border: 1px solid #555;
+        padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px;
+        z-index: 200;
     }
 
-    /* Modal จบเกม */
     #end-screen {
         display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.9); z-index: 9999;
@@ -94,26 +75,14 @@
 </head>
 <body>
 
-<div id="game-wrapper">
-  <div id="game-container">
-    <div id="chart-box">
-        <img src="" class="quiz-bg" id="bgImage">
-        <canvas id="quizCanvas"></canvas>
-    </div>
-  </div>
+<div id="game-container">
+    <canvas id="quizCanvas"></canvas>
+    <button class="reset-btn" onclick="resetView()">🔄 Reset View</button>
+</div>
 
-  <div id="control-area">
+<div id="control-area">
     <div id="questionText" class="question-text">Loading...</div>
-    
-    <div id="choice-container">
-        </div>
-
-    <div class="zoom-controls">
-        <span class="zoom-icon">🔍 -</span>
-        <input type="range" id="zoomSlider" min="1" max="3" step="0.1" value="1" oninput="updateZoom(this.value)">
-        <span class="zoom-icon">🔍 +</span>
-    </div>
-  </div>
+    <div id="choice-container"></div>
 </div>
 
 <div id="end-screen">
@@ -140,24 +109,31 @@ const steps = [
 ];
 
 // ==========================================
-// 2. ระบบเกม + ระบบซูม
+// 2. ระบบเกม Engine (Canvas Camera)
 // ==========================================
 const canvas = document.getElementById('quizCanvas');
 const ctx = canvas.getContext('2d');
-const bgImage = document.getElementById('bgImage');
-const chartBox = document.getElementById('chart-box');
-const gameContainer = document.getElementById('game-container');
+const bgImage = new Image(); // สร้าง Image Object รอไว้เลย
+const container = document.getElementById('game-container');
 const choiceContainer = document.getElementById('choice-container');
-const zoomSlider = document.getElementById('zoomSlider');
 
 let currentStepIdx = 0;
-let currentZoom = 1; // ค่าซูมเริ่มต้น
-let baseScale = 1;   // สัดส่วนภาพพื้นฐาน
 
-window.onload = function() {
-    loadStep();
-    window.addEventListener('resize', () => { applyZoom(); });
-};
+// 📸 Camera State (ตัวแปรควบคุมมุมกล้อง)
+let camera = { x: 0, y: 0, z: 1 }; 
+let isDragging = false;
+let startPan = { x: 0, y: 0 };
+let lastZoomCenter = { x: 0, y: 0 };
+
+// Touch State
+let initialPinchDist = null;
+let lastCameraZ = 1;
+
+window.onload = function() { loadStep(); };
+window.addEventListener('resize', () => { 
+    fitToScreen(); 
+    draw(); 
+});
 
 function loadStep() {
     if(currentStepIdx >= steps.length) {
@@ -176,90 +152,203 @@ function loadStep() {
         choiceContainer.appendChild(btn);
     });
 
-    // รีเซ็ตซูมทุกครั้งที่ขึ้นข้อใหม่
-    currentZoom = 1;
-    zoomSlider.value = 1;
-
     bgImage.src = s.image;
     bgImage.onload = function() { 
-        // คำนวณ Base Scale (ให้ภาพเต็มจอพอดีในตอนแรก)
-        calculateBaseScale();
-        applyZoom(); 
+        resetView(); // รีเซ็ตมุมกล้องให้พอดีจอทุกครั้งที่เริ่มข้อใหม่
     }
 }
 
-function calculateBaseScale() {
-    if(!bgImage.src) return;
-    const containerW = gameContainer.clientWidth;
-    const containerH = gameContainer.clientHeight;
+// ฟังก์ชันจัดภาพให้อยู่กลางจอตอนเริ่ม
+function fitToScreen() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     
-    // คำนวณสัดส่วนเพื่อให้ภาพ "พอดีจอ" (Contain) เป็นค่าเริ่มต้น
-    const ratioW = containerW / bgImage.naturalWidth;
-    const ratioH = containerH / bgImage.naturalHeight;
-    baseScale = Math.min(ratioW, ratioH);
+    if(!bgImage.complete) return;
+
+    // คำนวณ Scale ให้พอดีจอ (Fit Contain)
+    const scaleW = canvas.width / bgImage.naturalWidth;
+    const scaleH = canvas.height / bgImage.naturalHeight;
+    const scale = Math.min(scaleW, scaleH) * 0.9; // *0.9 ให้เหลือขอบนิดหน่อย
+
+    camera.z = scale;
+    // จัดกึ่งกลาง
+    camera.x = (canvas.width - bgImage.naturalWidth * scale) / 2;
+    camera.y = (canvas.height - bgImage.naturalHeight * scale) / 2;
 }
 
-function updateZoom(val) {
-    currentZoom = parseFloat(val);
-    applyZoom();
+function resetView() {
+    fitToScreen();
+    draw();
 }
 
-function applyZoom() {
-    if(!bgImage.src) return;
+// ==========================================
+// 🖐️ ระบบสัมผัส (Touch Logic - หัวใจสำคัญ)
+// ==========================================
+container.addEventListener('touchstart', handleTouchStart, { passive: false });
+container.addEventListener('touchmove', handleTouchMove, { passive: false });
+container.addEventListener('touchend', handleTouchEnd);
+
+// รองรับ Mouse (เผื่อเทสในคอม)
+container.addEventListener('mousedown', handleMouseDown);
+container.addEventListener('mousemove', handleMouseMove);
+container.addEventListener('mouseup', handleMouseUp);
+container.addEventListener('wheel', handleWheel, { passive: false });
+
+function handleTouchStart(e) {
+    if(e.touches.length === 1) {
+        // 1 นิ้ว = เริ่มลาก (Pan)
+        isDragging = true;
+        startPan = { x: e.touches[0].clientX - camera.x, y: e.touches[0].clientY - camera.y };
+    } else if (e.touches.length === 2) {
+        // 2 นิ้ว = เริ่มซูม (Pinch)
+        isDragging = false; // หยุดลากชั่วคราว
+        initialPinchDist = getPinchDist(e);
+        lastCameraZ = camera.z;
+        // หาจุดกึ่งกลางระหว่าง 2 นิ้ว เพื่อซูมเข้าหามัน
+        lastZoomCenter = getPinchCenter(e); 
+    }
+}
+
+function handleTouchMove(e) {
+    e.preventDefault(); // ⛔ ห้าม Safari เลื่อนจอ
     
-    // สูตร: ขนาดจริง = Base Scale * Zoom Factor
-    const finalScale = baseScale * currentZoom;
+    if(e.touches.length === 1 && isDragging) {
+        // ลาก (Pan)
+        camera.x = e.touches[0].clientX - startPan.x;
+        camera.y = e.touches[0].clientY - startPan.y;
+        draw();
+    } else if (e.touches.length === 2 && initialPinchDist) {
+        // ซูม (Pinch Zoom)
+        const currentDist = getPinchDist(e);
+        const zoomFactor = currentDist / initialPinchDist;
+        
+        // คำนวณ Zoom ใหม่
+        const newZoom = lastCameraZ * zoomFactor;
+        
+        // จำกัดการซูม (ไม่ให้เล็กเกินไป หรือใหญ่เกินไป)
+        if (newZoom > 0.1 && newZoom < 5) {
+            // สูตรคำนวณ Zoom Towards Point (ยากนิดนึงแต่ลื่น)
+            // 1. หาตำแหน่งเมาส์เทียบกับโลกจริงก่อนซูม
+            const worldX = (lastZoomCenter.x - camera.x) / camera.z;
+            const worldY = (lastZoomCenter.y - camera.y) / camera.z;
+            
+            // 2. อัปเดต Zoom
+            camera.z = newZoom;
+            
+            // 3. ปรับ camera.x,y กลับคืน เพื่อให้จุดเดิมยังอยู่ที่เดิม
+            // (คำนวณย้อนกลับจาก world coordinate)
+            const newCenter = getPinchCenter(e); // จุดกลางนิ้วอาจขยับ
+            camera.x = newCenter.x - worldX * camera.z;
+            camera.y = newCenter.y - worldY * camera.z;
+            
+            draw();
+        }
+    }
+}
+
+function handleTouchEnd(e) {
+    isDragging = false;
+    if (e.touches.length < 2) {
+        initialPinchDist = null;
+    }
+}
+
+// คำนวณระยะห่างนิ้ว (Pythagoras)
+function getPinchDist(e) {
+    return Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+    );
+}
+// คำนวณจุดกึ่งกลางระหว่าง 2 นิ้ว
+function getPinchCenter(e) {
+    return {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+    };
+}
+
+// --- Mouse Events (สำหรับ PC) ---
+function handleMouseDown(e) {
+    isDragging = true;
+    startPan = { x: e.clientX - camera.x, y: e.clientY - camera.y };
+}
+function handleMouseMove(e) {
+    if (!isDragging) return;
+    camera.x = e.clientX - startPan.x;
+    camera.y = e.clientY - startPan.y;
+    draw();
+}
+function handleMouseUp() { isDragging = false; }
+function handleWheel(e) {
+    e.preventDefault();
+    const zoomIntensity = 0.1;
+    const scroll = e.deltaY < 0 ? 1 : -1;
+    const zoomFactor = Math.exp(scroll * zoomIntensity);
     
-    const finalW = bgImage.naturalWidth * finalScale;
-    const finalH = bgImage.naturalHeight * finalScale;
-    
-    // ปรับขนาดกล่อง (ถ้าใหญ่กว่าจอ Scrollbar จะทำงานเอง)
-    chartBox.style.width = finalW + 'px';
-    chartBox.style.height = finalH + 'px';
-    
-    // Canvas ต้องเท่าภาพต้นฉบับเสมอ (เพื่อความคมชัด)
-    canvas.width = bgImage.naturalWidth;
-    canvas.height = bgImage.naturalHeight;
+    const newZoom = camera.z * zoomFactor;
+    if (newZoom < 0.1 || newZoom > 5) return;
+
+    // Zoom Towards Mouse Position
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const worldX = (mouseX - camera.x) / camera.z;
+    const worldY = (mouseY - camera.y) / camera.z;
+
+    camera.z = newZoom;
+    camera.x = mouseX - worldX * camera.z;
+    camera.y = mouseY - worldY * camera.z;
     
     draw();
 }
 
 // ==========================================
-// 🎨 ฟังก์ชันวาดรูป (V6: รุ่นคอยาว)
+// 🎨 ฟังก์ชันวาดรูป (วาดตามมุมกล้อง)
 // ==========================================
 function draw() {
+    // 1. ล้างหน้าจอ
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const s = steps[currentStepIdx];
+    
+    // 2. บันทึกสถานะเดิมไว้
+    ctx.save();
+    
+    // 3. ย้ายกล้อง (Transform Matrix)
+    ctx.translate(camera.x, camera.y);
+    ctx.scale(camera.z, camera.z);
 
+    // 4. วาดรูป Background
+    if(bgImage.complete) {
+        ctx.drawImage(bgImage, 0, 0);
+    }
+
+    // 5. วาดหมุดต่างๆ (โค้ดเดิม แต่ตอนนี้มันจะขยับตามกล้องเองอัตโนมัติ!)
+    const s = steps[currentStepIdx];
     s.choices.forEach((box, index) => {
         const centerX = box.x + (box.w / 2);
+        
+        // Logic แยกบนล่าง (เหมือนเดิม)
         const isTop = (index % 2 === 0); 
         const gap = isTop ? 50 : 35; 
         
         let pinY, targetY; 
-        if (isTop) {
-            targetY = box.y; 
-            pinY = targetY - gap;
-        } else {
-            targetY = box.y + box.h;
-            pinY = targetY + gap;
-        }
+        if (isTop) { targetY = box.y; pinY = targetY - gap; } 
+        else { targetY = box.y + box.h; pinY = targetY + gap; }
 
-        ctx.beginPath();
-        ctx.moveTo(centerX, pinY);   
-        ctx.lineTo(centerX, targetY); 
-        ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(centerX, pinY); ctx.lineTo(centerX, targetY); 
+        ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke(); // เส้นจะหนาขึ้นเมื่อซูม (ถ้าไม่อยากให้หนาต้องหาร camera.z)
 
-        ctx.beginPath();
-        ctx.arc(centerX, pinY, 11, 0, 2 * Math.PI); 
+        ctx.beginPath(); ctx.arc(centerX, pinY, 11, 0, 2 * Math.PI); 
         ctx.fillStyle = "#1e2329"; ctx.fill();
-        
         ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke();
 
         ctx.fillStyle = "#fcd535"; ctx.font = "bold 13px Arial"; 
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        // พลิกกลับ Text ไม่ให้กลับหัว (กรณีซูมแปลกๆ) แต่ scale ปกติไม่ต้องแก้
         ctx.fillText(index + 1, centerX, pinY + 1); 
     });
+
+    // 6. จบการวาด Restore กลับ
+    ctx.restore();
 }
 
 function checkAnswer(selectedIndex, btnElement) {
