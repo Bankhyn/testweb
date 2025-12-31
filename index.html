@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ministry of Trader - Pro Trading Drill</title>
+    <title>Dashboard - Ministry of Trader</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             font-family: 'Sarabun', sans-serif;
             background-color: #0b0e11;
             color: #eaecef;
         }
 
-        /* --- Navbar --- */
+        /* Navbar */
         nav {
             display: flex; justify-content: space-between; align-items: center;
             padding: 15px 40px;
@@ -22,83 +21,92 @@
             border-bottom: 1px solid #2b3139;
             position: sticky; top: 0; z-index: 100;
         }
-
-        .logo-container {
-            display: flex; align-items: center; gap: 10px;
-        }
+        .logo-container { display: flex; align-items: center; gap: 10px; }
         .logo-img { height: 40px; width: auto; }
-        .logo-text {
-            font-size: 20px; font-weight: bold; color: #fcd535; letter-spacing: 0.5px;
+        .logo-text { font-size: 20px; font-weight: bold; color: #fcd535; }
+        
+        .user-profile {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px; color: #848e9c;
+        }
+        .avatar {
+            width: 35px; height: 35px; background: #2b3139; 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #fcd535; font-weight: bold; border: 1px solid #474d57;
         }
 
-        .btn-login {
-            background: transparent; border: 1px solid #474d57; color: white;
-            padding: 6px 15px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 14px;
-        }
-        .btn-login:hover { border-color: #fcd535; color: #fcd535; }
-
-        /* --- Hero Section --- */
-        .hero {
-            text-align: center;
-            padding: 60px 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 {
-            font-size: 48px; margin-bottom: 20px;
-            background: linear-gradient(to right, #fcd535, #f0b90b);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            line-height: 1.2;
-        }
-        p.subtitle {
-            font-size: 20px; color: #848e9c; line-height: 1.6; margin-bottom: 40px;
+        /* Container */
+        .container {
+            max-width: 1000px; /* ลดความกว้างรวมลงหน่อย ให้ดูสมส่วนกับ 2 คอลัมน์ */
+            margin: 0 auto; padding: 40px 20px;
         }
 
-        .btn-start {
-            background: #fcd535; color: #000;
-            font-size: 20px; font-weight: bold;
-            padding: 15px 40px; border: none; border-radius: 50px;
-            cursor: pointer; text-decoration: none;
-            box-shadow: 0 4px 15px rgba(252, 213, 53, 0.3);
-            transition: transform 0.2s; display: inline-block;
-        }
-        .btn-start:hover { transform: scale(1.05); }
+        /* Header */
+        .dashboard-header { margin-bottom: 40px; }
+        h2 { color: #fcd535; margin-bottom: 5px; font-size: 28px; }
+        p.sub-text { color: #848e9c; margin-top: 0; }
 
-        /* --- Feature Cards --- */
-        .features {
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;
-            padding: 40px 20px;
+        /* Grid Layout (แก้ใหม่: บังคับ 2 คอลัมน์) */
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 👈 บังคับแบ่ง 2 ช่องเท่ากัน */
+            gap: 25px;
         }
-        .card {
+
+        /* Card Design */
+        .course-card {
             background: #1e2329;
-            padding: 25px; border-radius: 12px;
-            width: 300px; text-align: left;
-            border: 1px solid #2b3139; transition: 0.2s;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #2b3139;
+            transition: transform 0.2s, border-color 0.2s;
+            display: flex; flex-direction: column;
         }
-        .card:hover { border-color: #fcd535; transform: translateY(-5px); }
-        .card h3 { color: #fcd535; margin-top: 0; font-size: 18px; }
-        .card p { color: #848e9c; font-size: 14px; line-height: 1.5; margin-bottom: 0;}
-
-        footer {
-            text-align: center; padding: 40px; color: #474d57; font-size: 12px;
-            border-top: 1px solid #2b3139; margin-top: 30px;
+        .course-card:hover {
+            transform: translateY(-5px);
+            border-color: #fcd535;
         }
 
-        /* 🔥 MOBILE RESPONSIVE (โค้ดส่วนนี้จะทำงานเฉพาะบนมือถือ) 🔥 */
+        /* ส่วนหัวการ์ด */
+        .card-header {
+            height: 140px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 50px;
+            position: relative;
+        }
+        
+        /* สีพื้นหลังหัวการ์ด */
+        .bg-candle { background: linear-gradient(135deg, #ef5350, #26a69a); } 
+        .bg-fibo { background: linear-gradient(135deg, #B8860B, #FFD700); } 
+        .bg-mountain { background: linear-gradient(135deg, #6f42c1, #007bff); } 
+        .bg-full { background: linear-gradient(135deg, #f0b90b, #e83e8c); } 
+
+        .card-body { padding: 25px; flex: 1; display: flex; flex-direction: column; }
+        
+        h3 { margin: 0 0 10px 0; font-size: 18px; color: #fff; display: flex; align-items: center;}
+        p.desc { 
+            font-size: 14px; color: #848e9c; line-height: 1.6; margin-bottom: 25px; flex: 1;
+        }
+
+        /* ปุ่มเล่น */
+        .btn-play {
+            display: block; width: 100%; padding: 12px 0;
+            background: #2b3139; color: #eaecef; text-align: center;
+            border-radius: 6px; text-decoration: none; font-weight: bold; border: 1px solid #474d57;
+            transition: 0.2s; margin-top: auto; 
+        }
+        .btn-play:hover { background: #fcd535; color: #000; border-color: #fcd535; }
+        
+        /* ปุ่มไฮไลท์ (ด่าน 4) */
+        .btn-play.primary { background: #fcd535; color: #000; border: none; }
+        .btn-play.primary:hover { background: #e6c32f; }
+
+        /* Responsive: มือถือให้เรียง 1 แถวเหมือนเดิม */
         @media (max-width: 768px) {
-            nav { padding: 15px 20px; } /* ลดขอบ Navbar */
-            
-            .logo-img { height: 30px; } /* ลดขนาดโลโก้ */
-            .logo-text { font-size: 16px; } /* ลดขนาดชื่อร้าน */
-            .btn-login { font-size: 12px; padding: 5px 10px; }
-
-            .hero { padding: 40px 20px; }
-            h1 { font-size: 32px; } /* ลดหัวข้อให้พอดีมือถือ */
-            p.subtitle { font-size: 16px; margin-bottom: 30px; }
-            
-            .btn-start { width: 100%; box-sizing: border-box; } /* ปุ่มเต็มจอ */
-
-            .card { width: 100%; } /* การ์ดขยายเต็มจอมือถือ */
+            .course-grid { grid-template-columns: 1fr; } /* กลับมาเรียงเดี่ยวบนมือถือ */
+            nav { padding: 15px 20px; }
+            .container { padding: 20px; }
+            .card-header { height: 120px; font-size: 40px; }
         }
     </style>
 </head>
@@ -109,36 +117,66 @@
             <img src="logo.jpg" alt="Logo" class="logo-img">
             <span class="logo-text">Ministry of Trader</span>
         </div>
-        <button class="btn-login">เข้าสู่ระบบ</button>
+        <div class="user-profile">
+            <span>Trader</span>
+            <div class="avatar">T</div>
+        </div>
     </nav>
 
-    <div class="hero">
-        <h1>เลิกขาดทุนเพราะ<br>"ตีเส้นผิด"</h1>
-        <p class="subtitle">
-            ฝึกฝน Technical Analysis ด้วยกราฟจริง<br>
-            ระบบ AI ตรวจจับความแม่นยำ รู้ผลทันที
-        </p>
-        <a href="index.html" class="btn-start">🔥 เริ่มฝึกฟรีทันที</a>
-    </div>
+    <div class="container">
+        <div class="dashboard-header">
+            <h2>เลือกแบบฝึกหัด 🎯</h2>
+            <p class="sub-text">ฝึกฝนทักษะทีละขั้น และตะลุยโจทย์มากกว่า 100 บททดสอบ !!</p>
+        </div>
 
-    <div class="features">
-        <div class="card">
-            <h3>📈 กราฟจริง 100%</h3>
-            <p>ใช้กราฟจากตลาดจริง Forex, Crypto และหุ้นไทย เพื่อความสมจริงที่สุดในการฝึกฝน</p>
-        </div>
-        <div class="card">
-            <h3>🤖 ระบบตรวจ AI</h3>
-            <p>อัลกอริทึม Smart Check ตรวจจับพิกัดเส้นที่คุณวาดเทียบกับเฉลย ให้คะแนนแม่นยำ</p>
-        </div>
-        <div class="card">
-            <h3>📱 เล่นได้ทุกที่</h3>
-            <p>รองรับมือถือและคอมพิวเตอร์ ฝึกฝนได้ตลอด 24 ชม. ผ่านเว็บเบราว์เซอร์</p>
+        <div class="course-grid">
+
+            <div class="course-card">
+                <div class="card-header bg-candle">🕯️</div>
+                <div class="card-body">
+                    <h3>1. แท่งเทียนกลับตัว (Reversal)</h3>
+                    <p class="desc">
+                        แบบฝึกหัดแท่งเทียนกลับตัวในโซน Stochastic Oversold และ Overbought เพื่อหาจุดเข้าที่ได้เปรียบ
+                    </p>
+                    <a href="#" class="btn-play">เริ่มฝึก</a>
+                </div>
+            </div>
+
+            <div class="course-card">
+                <div class="card-header bg-fibo">📐</div>
+                <div class="card-body">
+                    <h3>2. การตี Fibo ขาขึ้น/ขาลง</h3>
+                    <p class="desc">
+                        ทบทวนการตี Fibo หัวขาขึ้นและขาลง ทั้งรูปแบบสมบูรณ์และแบบหักคอ เข้าใจแบบถ่องแท้
+                    </p>
+                    <a href="#" class="btn-play">เริ่มฝึก</a>
+                </div>
+            </div>
+
+            <div class="course-card">
+                <div class="card-header bg-mountain">🏔️</div>
+                <div class="card-body">
+                    <h3>3. เงื่อนไขตัดภูเขา 16 แบบ</h3>
+                    <p class="desc">
+                        เจาะลึกกฎการตัดภูเขา (ตัดกราฟ) ทั้ง 16 กรณี ทั้งขาขึ้นและขาลง เพื่อให้เข้าใจว่ากำลังรอหน้าเทรดไหนอยู่
+                    </p>
+                    <a href="#" class="btn-play">เริ่มฝึก</a>
+                </div>
+            </div>
+
+            <div class="course-card" style="border: 2px solid #fcd535;">
+                <div class="card-header bg-full">🚀</div>
+                <div class="card-body">
+                    <h3>4. แกะกราฟเต็มรอบ (Full Cycle)</h3>
+                    <p class="desc">
+                        บททดสอบใหญ่! แกะกราฟจริงตั้งแต่ต้นรอบขาขึ้น เปลี่ยนเทรนด์ จนจบขาลง (รวมทุกเทคนิค)
+                    </p>
+                    <a href="game.html" class="btn-play primary">🔥 ลุยด่านบอส</a>
+                </div>
+            </div>
+
         </div>
     </div>
-
-    <footer>
-        &copy; 2025 Ministry of Trader. All rights reserved.
-    </footer>
 
 </body>
 </html>
