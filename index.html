@@ -1,43 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Candle Drill - Select Number</title>
+  <title>Candle Drill - Zoom Edition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { background: #222; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; overflow: hidden; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+    /* 1. ตั้งค่าหน้าจอไม่ให้ขยับกวนใจ */
+    body { 
+        background: #222; margin: 0; padding: 0; 
+        font-family: 'Sarabun', sans-serif; 
+        overflow: hidden; /* ห้ามเลื่อนทั้งหน้า */
+        width: 100vw; 
+        height: 100vh; height: 100dvh; /* แก้ Safari บัง */
+        display: flex; flex-direction: column; 
+        touch-action: none; /* ห้าม Browser มายุ่งกับการสัมผัส */
+    }
     
-    #game-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    #game-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; }
     
-    /* พื้นที่กราฟ */
-    #game-container { position: relative; width: 100%; flex: 1; background: #333; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-    #chart-box { position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-    img.quiz-bg { display: block; width: 100%; height: 100%; }
+    /* 2. พื้นที่กราฟ (อนุญาตให้เลื่อนซ้ายขวาได้เฉพาะตรงนี้) */
+    #game-container { 
+        flex: 1; 
+        width: 100%; 
+        background: #333; 
+        overflow: auto; /* ✅ ยอมให้ Scroll ได้ */
+        display: flex; 
+        align-items: center; /* จัดกลางแนวตั้ง */
+        justify-content: flex-start; /* เริ่มจากซ้ายเสมอ */
+        -webkit-overflow-scrolling: touch; /* ลื่นๆ แบบ iOS */
+        touch-action: pan-x pan-y; /* อนุญาตให้ปัดเลื่อนได้ */
+        padding-bottom: 150px; /* เผื่อที่ให้ปุ่มลอยข้างล่าง */
+    }
+    
+    /* กล่องใส่กราฟ */
+    #chart-box { position: relative; transition: width 0.1s; /* ซูมสมูทๆ */ }
+    img.quiz-bg { display: block; height: 100%; width: 100%; pointer-events: none; }
     canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
 
-    /* พื้นที่ควบคุม */
+    /* 3. แผงควบคุมลอย (Floating Control) */
     #control-area { 
-        width: 100%; height: auto; min-height: 100px; 
-        background: #f8f9fa; border-top: 1px solid #444; 
-        display: flex; flex-direction: column; 
-        align-items: center; justify-content: center; 
-        padding: 10px; box-sizing: border-box; z-index: 100;
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        width: 90%; max-width: 450px;
+        background: rgba(30,35,41,0.95); backdrop-filter: blur(10px);
+        border: 1px solid #fcd535; border-radius: 20px;
+        padding: 15px; z-index: 100;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
     }
 
     .question-text { 
-        font-size: 16px; font-weight: bold; color: #333; 
-        margin-bottom: 10px; text-align: center;
+        font-size: 16px; font-weight: bold; color: #fff; 
+        margin: 0; text-align: center; text-shadow: 0 1px 2px black;
     }
 
     /* ปุ่มตัวเลข */
-    #choice-container {
-        display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;
-    }
+    #choice-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
     .choice-btn {
-        width: 50px; height: 50px;
+        width: 45px; height: 45px;
         background: #333; color: #fcd535;
         border: 2px solid #fcd535; border-radius: 50%;
-        font-size: 20px; font-weight: bold; cursor: pointer;
+        font-size: 18px; font-weight: bold; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         transition: 0.2s;
     }
@@ -46,6 +69,20 @@
     /* สถานะถูกผิด */
     .btn-correct { background: #28a745 !important; color: white !important; border-color: #28a745 !important; }
     .btn-wrong { background: #dc3545 !important; color: white !important; border-color: #dc3545 !important; opacity: 0.5; }
+
+    /* 4. แถบซูม (Zoom Slider) */
+    .zoom-controls {
+        display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 5px;
+        padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .zoom-icon { font-size: 14px; color: #888; }
+    input[type=range] {
+        flex: 1; -webkit-appearance: none; height: 4px; background: #555; border-radius: 2px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none; width: 20px; height: 20px; 
+        background: #fcd535; border-radius: 50%; cursor: pointer;
+    }
 
     /* Modal จบเกม */
     #end-screen {
@@ -67,8 +104,15 @@
 
   <div id="control-area">
     <div id="questionText" class="question-text">Loading...</div>
+    
     <div id="choice-container">
         </div>
+
+    <div class="zoom-controls">
+        <span class="zoom-icon">🔍 -</span>
+        <input type="range" id="zoomSlider" min="1" max="3" step="0.1" value="1" oninput="updateZoom(this.value)">
+        <span class="zoom-icon">🔍 +</span>
+    </div>
   </div>
 </div>
 
@@ -79,28 +123,24 @@
 
 <script>
 // ==========================================
-// 1. 📂 ข้อมูลโจทย์ (แบบเลือกตอบ)
+// 1. 📂 ข้อมูลโจทย์
 // ==========================================
 const steps = [
-  // --- ข้อที่ 1 ---
   {
     "image": "candle1.png", 
     "question": "จาก STO OB โซนสีส้ม แท่งเทียนไหนคือแท่งเทียนกลับตัว",
     "choices": [
-       // ผมแกะเอาเฉพาะไส้ใน (x,y,w,h) ออกมาให้แล้วครับ
        { "x": 1137, "y": 171, "w": 14, "h": 38 },
        { "x": 1146, "y": 160, "w": 15, "h": 29 },
        { "x": 1159, "y": 166, "w": 15, "h": 48 },
        { "x": 1168, "y": 200, "w": 16, "h": 41 }
     ],
-    // มี 4 ตัวเลือก (นับ 0, 1, 2, 3) 
-    // ถ้าเฉลยคืออันสุดท้าย ให้ใส่เลข 3 ครับ
     "correctIndex": 3  
   }
 ];
 
 // ==========================================
-// 2. ระบบเกม
+// 2. ระบบเกม + ระบบซูม
 // ==========================================
 const canvas = document.getElementById('quizCanvas');
 const ctx = canvas.getContext('2d');
@@ -108,13 +148,15 @@ const bgImage = document.getElementById('bgImage');
 const chartBox = document.getElementById('chart-box');
 const gameContainer = document.getElementById('game-container');
 const choiceContainer = document.getElementById('choice-container');
+const zoomSlider = document.getElementById('zoomSlider');
 
 let currentStepIdx = 0;
-let scaleRatio = 1;
+let currentZoom = 1; // ค่าซูมเริ่มต้น
+let baseScale = 1;   // สัดส่วนภาพพื้นฐาน
 
 window.onload = function() {
     loadStep();
-    window.addEventListener('resize', resizeChart);
+    window.addEventListener('resize', () => { applyZoom(); });
 };
 
 function loadStep() {
@@ -122,11 +164,9 @@ function loadStep() {
         document.getElementById('end-screen').style.display = 'flex';
         return;
     }
-
     const s = steps[currentStepIdx];
     document.getElementById('questionText').innerText = `ข้อ ${currentStepIdx + 1}: ${s.question}`;
     
-    // สร้างปุ่มกด
     choiceContainer.innerHTML = "";
     s.choices.forEach((_, index) => {
         const btn = document.createElement("div");
@@ -136,27 +176,56 @@ function loadStep() {
         choiceContainer.appendChild(btn);
     });
 
+    // รีเซ็ตซูมทุกครั้งที่ขึ้นข้อใหม่
+    currentZoom = 1;
+    zoomSlider.value = 1;
+
     bgImage.src = s.image;
-    bgImage.onload = function() { resizeChart(); }
+    bgImage.onload = function() { 
+        // คำนวณ Base Scale (ให้ภาพเต็มจอพอดีในตอนแรก)
+        calculateBaseScale();
+        applyZoom(); 
+    }
 }
 
-function resizeChart() {
+function calculateBaseScale() {
     if(!bgImage.src) return;
     const containerW = gameContainer.clientWidth;
     const containerH = gameContainer.clientHeight;
-    const imgW = bgImage.naturalWidth;
-    const imgH = bgImage.naturalHeight;
-    scaleRatio = Math.min(containerW / imgW, containerH / imgH);
     
-    chartBox.style.width = (imgW * scaleRatio) + 'px';
-    chartBox.style.height = (imgH * scaleRatio) + 'px';
-    canvas.width = imgW;
-    canvas.height = imgH;
+    // คำนวณสัดส่วนเพื่อให้ภาพ "พอดีจอ" (Contain) เป็นค่าเริ่มต้น
+    const ratioW = containerW / bgImage.naturalWidth;
+    const ratioH = containerH / bgImage.naturalHeight;
+    baseScale = Math.min(ratioW, ratioH);
+}
+
+function updateZoom(val) {
+    currentZoom = parseFloat(val);
+    applyZoom();
+}
+
+function applyZoom() {
+    if(!bgImage.src) return;
+    
+    // สูตร: ขนาดจริง = Base Scale * Zoom Factor
+    const finalScale = baseScale * currentZoom;
+    
+    const finalW = bgImage.naturalWidth * finalScale;
+    const finalH = bgImage.naturalHeight * finalScale;
+    
+    // ปรับขนาดกล่อง (ถ้าใหญ่กว่าจอ Scrollbar จะทำงานเอง)
+    chartBox.style.width = finalW + 'px';
+    chartBox.style.height = finalH + 'px';
+    
+    // Canvas ต้องเท่าภาพต้นฉบับเสมอ (เพื่อความคมชัด)
+    canvas.width = bgImage.naturalWidth;
+    canvas.height = bgImage.naturalHeight;
+    
     draw();
 }
 
 // ==========================================
-// 🎨 ฟังก์ชันวาดรูป (V6: รุ่นคอยาว ไม่บังเพื่อนข้างๆ)
+// 🎨 ฟังก์ชันวาดรูป (V6: รุ่นคอยาว)
 // ==========================================
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -164,18 +233,10 @@ function draw() {
 
     s.choices.forEach((box, index) => {
         const centerX = box.x + (box.w / 2);
-        
-        // --- 🤖 Logic แยกบนล่าง ---
         const isTop = (index % 2 === 0); 
-        
-        // 🚀 ปรับระยะห่าง (Gap) ให้ยืดออกไปอีก!
-        // ถ้าอยู่บน (Top) ให้ยืดเยอะหน่อย (50px) เพื่อหนีไส้เทียนข้างๆ
-        // ถ้าอยู่ล่าง (Bottom) เอาแค่ 35px ก็พอ
         const gap = isTop ? 50 : 35; 
         
-        let pinY;
-        let targetY; 
-
+        let pinY, targetY; 
         if (isTop) {
             targetY = box.y; 
             pinY = targetY - gap;
@@ -184,54 +245,31 @@ function draw() {
             pinY = targetY + gap;
         }
 
-        // 1. วาดเส้นโยง (เส้นบางๆ ไม่บังตา)
         ctx.beginPath();
         ctx.moveTo(centerX, pinY);   
         ctx.lineTo(centerX, targetY); 
-        ctx.lineWidth = 1.5;         
-        ctx.strokeStyle = "#fcd535"; 
-        ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke();
 
-        // 2. วาดพื้นหลังวงกลม
         ctx.beginPath();
-        ctx.arc(centerX, pinY, 11, 0, 2 * Math.PI); // รัศมี 11px
-        ctx.fillStyle = "#1e2329"; 
-        ctx.fill();
+        ctx.arc(centerX, pinY, 11, 0, 2 * Math.PI); 
+        ctx.fillStyle = "#1e2329"; ctx.fill();
         
-        // 3. วาดขอบวงกลม
-        ctx.lineWidth = 1.5; 
-        ctx.strokeStyle = "#fcd535"; 
-        ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = "#fcd535"; ctx.stroke();
 
-        // 4. วาดตัวเลข
-        ctx.fillStyle = "#fcd535"; 
-        ctx.font = "bold 13px Arial"; 
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#fcd535"; ctx.font = "bold 13px Arial"; 
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(index + 1, centerX, pinY + 1); 
     });
 }
 
 function checkAnswer(selectedIndex, btnElement) {
     const s = steps[currentStepIdx];
-    
     if(selectedIndex === s.correctIndex) {
-        // ✅ ถูก
         btnElement.classList.add("btn-correct");
-        playSound(true);
-        setTimeout(() => {
-            currentStepIdx++;
-            loadStep();
-        }, 800);
+        setTimeout(() => { currentStepIdx++; loadStep(); }, 800);
     } else {
-        // ❌ ผิด
         btnElement.classList.add("btn-wrong");
-        playSound(false);
     }
-}
-
-function playSound(isCorrect) {
-    // ใส่เสียงได้ถ้าต้องการ
 }
 </script>
 </body>
