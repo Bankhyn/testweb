@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fibo Drill - Crosshair Pro</title>
+  <title>Fibo Drill - Manual Submit</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    /* 1. ตั้งค่าหน้าจอ */
     body { 
         background: #222; margin: 0; padding: 0; 
         font-family: 'Sarabun', sans-serif; 
@@ -15,32 +16,50 @@
     #game-container { 
         position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #333; 
     }
-    canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+    canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+    canvas:active { cursor: grabbing; }
 
-    /* Control Panel */
+    /* 2. แผงควบคุม (Control Panel) */
     #control-area { 
         position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
         width: 90%; max-width: 450px;
         background: rgba(30,35,41,0.95); backdrop-filter: blur(10px);
         border: 1px solid #fcd535; border-radius: 20px;
-        padding: 15px; z-index: 100;
+        padding: 20px; z-index: 100;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
+        display: flex; flex-direction: column; gap: 15px; pointer-events: auto;
     }
     .question-text { font-size: 16px; font-weight: bold; color: #fff; margin: 0; text-align: center; }
 
-    .mode-switch { display: flex; gap: 10px; background: #111; padding: 5px; border-radius: 12px; }
-    .mode-btn {
-        flex: 1; padding: 10px; border: none; border-radius: 8px;
-        font-family: 'Sarabun'; font-weight: bold; cursor: pointer; transition: 0.2s;
-        display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 16px;
-    }
-    .mode-btn.active { background: #fcd535; color: #000; box-shadow: 0 2px 10px rgba(252, 213, 53, 0.3); }
-    .mode-btn.inactive { background: transparent; color: #888; }
+    /* กลุ่มปุ่มคำสั่ง */
+    .btn-group { display: flex; gap: 10px; width: 100%; }
 
+    /* สไตล์ปุ่มทั่วไป */
+    .action-btn {
+        flex: 1; padding: 12px; border-radius: 12px; font-size: 16px; font-weight: bold;
+        cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 5px;
+        transition: 0.2s;
+    }
+    
+    /* ปุ่มเริ่มวาด (สีเหลือง) */
+    .btn-draw { background: #333; color: #fcd535; border: 2px solid #fcd535; }
+    .btn-draw.active { background: #fcd535; color: #000; box-shadow: 0 0 15px rgba(252, 213, 53, 0.5); animation: pulse 1.5s infinite; }
+    
+    /* ปุ่มส่งคำตอบ (สีเขียว) */
+    .btn-submit { background: #28a745; color: white; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.4); }
+    .btn-submit:active { transform: scale(0.95); }
+
+    /* ปุ่มลบ (สีแดง) */
+    .btn-delete { background: #dc3545; color: white; flex: 0.5; } /* ขนาดเล็กกว่าเพื่อนหน่อย */
+    .btn-delete:active { transform: scale(0.95); }
+
+    @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.02);} 100% {transform: scale(1);} }
+
+    /* ปุ่มเสริม (มุมขวาบน) */
     .reset-btn { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); color: white; border: 1px solid #555; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; z-index: 200; }
     .reverse-btn { position: absolute; top: 15px; right: 120px; background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; z-index: 200; }
 
+    /* Modal แจ้งผล */
     #msg-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 20px 40px; border-radius: 12px; text-align: center; display: none; z-index: 300; border: 2px solid #fff; }
     .msg-success { border-color: #28a745 !important; color: #28a745; }
     .msg-fail { border-color: #dc3545 !important; color: #dc3545; }
@@ -56,9 +75,20 @@
 
 <div id="control-area">
     <div id="questionText" class="question-text">Loading...</div>
-    <div class="mode-switch">
-        <button class="mode-btn active" id="btnHand" onclick="setMode('hand')">🖐️ เลื่อนจอ</button>
-        <button class="mode-btn inactive" id="btnPen" onclick="setMode('pen')">✏️ วาดเส้น</button>
+    
+    <div id="group-start" class="btn-group">
+        <button id="btnDraw" class="action-btn btn-draw" onclick="activateDrawTool()">
+            ✏️ เริ่มตี Fibo
+        </button>
+    </div>
+
+    <div id="group-action" class="btn-group" style="display: none;">
+        <button class="action-btn btn-delete" onclick="deleteLine()">
+            🗑️ ลบ
+        </button>
+        <button class="action-btn btn-submit" onclick="checkAnswer()">
+            ✅ ส่งคำตอบ
+        </button>
     </div>
 </div>
 
@@ -75,7 +105,7 @@ const steps = [
   }
 ];
 
-// 2. Engine
+// 2. Engine Initialization
 const canvas = document.getElementById('quizCanvas');
 const ctx = canvas.getContext('2d');
 const bgImage = new Image();
@@ -95,13 +125,12 @@ let isDrawing = false;
 let userLine = null; 
 let startDrawCoord = { x: 0, y: 0 }; 
 
-// Touch Zoom & Crosshair
+// Touch & Crosshair
 let initialPinchDist = null;
 let lastCameraZ = 1;
 let pinchCenterWorld = { x:0, y:0 };
-let longPressTimer = null; // ⏱️ ตัวจับเวลา Long Press
-let isCrosshairActive = false; // สถานะ Crosshair
-let crosshairPos = { x: 0, y: 0 }; // ตำแหน่ง Crosshair
+let isCrosshairActive = false; 
+let crosshairPos = { x: 0, y: 0 }; 
 
 window.onload = function() { loadStep(); };
 window.addEventListener('resize', () => { fitToScreen(); draw(); });
@@ -110,20 +139,57 @@ function loadStep() {
     if(currentStepIdx >= steps.length) { alert("🎉 จบเกม!"); location.href='dashboard.html'; return; }
     const s = steps[currentStepIdx];
     document.getElementById('questionText').innerText = `ข้อ ${currentStepIdx + 1}: ${s.question}`;
-    userLine = null;
+    
+    deleteLine(); // ล้างเส้นเก่า
     isFiboReversed = false;
-    setMode('hand'); 
+    
     bgImage.src = s.image;
     bgImage.onload = function() { resetView(); }
 }
 
-function setMode(mode) {
-    currentMode = mode;
-    document.getElementById('btnHand').className = mode === 'hand' ? 'mode-btn active' : 'mode-btn inactive';
-    document.getElementById('btnPen').className = mode === 'pen' ? 'mode-btn active' : 'mode-btn inactive';
+// ==========================================
+// 🛠️ ระบบจัดการปุ่ม (UI State Manager)
+// ==========================================
+function updateButtons() {
+    const groupStart = document.getElementById('group-start');
+    const groupAction = document.getElementById('group-action');
+    const btnDraw = document.getElementById('btnDraw');
+
+    if (userLine) {
+        // ถ้ามีเส้นแล้ว -> โชว์ปุ่ม ลบ/ส่ง
+        groupStart.style.display = 'none';
+        groupAction.style.display = 'flex';
+        currentMode = 'hand'; // กลับมาเป็นโหมดมืออัตโนมัติ
+    } else {
+        // ถ้ายังไม่มีเส้น -> โชว์ปุ่ม วาด
+        groupStart.style.display = 'flex';
+        groupAction.style.display = 'none';
+        
+        // เช็คสถานะปุ่มวาด
+        if (currentMode === 'pen') {
+            btnDraw.className = 'action-btn btn-draw active';
+            btnDraw.innerHTML = '🎯 วาดฟิโบได้เลยครับ!';
+        } else {
+            btnDraw.className = 'action-btn btn-draw';
+            btnDraw.innerHTML = '✏️ เริ่มตี Fibo';
+        }
+    }
+}
+
+function activateDrawTool() {
+    currentMode = 'pen';
+    updateButtons();
+}
+
+function deleteLine() {
+    userLine = null;
+    currentMode = 'hand';
+    updateButtons();
+    draw();
 }
 
 function toggleReverse() { isFiboReversed = !isFiboReversed; draw(); }
+
 function fitToScreen() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -139,16 +205,14 @@ function getWorldPos(clientX, clientY) {
 }
 
 // ==========================================
-// 🖐️✏️ ระบบสัมผัส + Crosshair
+// 🖐️✏️ Input Handling
 // ==========================================
 container.addEventListener('touchstart', handleStart, { passive: false });
 container.addEventListener('touchmove', handleMove, { passive: false });
 container.addEventListener('touchend', handleEnd);
-// Mouse events (PC)
 container.addEventListener('mousedown', handleStart);
 container.addEventListener('mousemove', handleMove);
 container.addEventListener('mouseup', handleEnd);
-container.addEventListener('mouseleave', () => { isCrosshairActive = false; draw(); }); 
 container.addEventListener('wheel', (e) => { e.preventDefault(); });
 
 function handleStart(e) {
@@ -157,22 +221,13 @@ function handleStart(e) {
     const clientX = touches ? touches[0].clientX : e.clientX;
     const clientY = touches ? touches[0].clientY : e.clientY;
 
-    if (touches) {
-        // --- 📱 MOBILE LOGIC ---
-        if (touches.length === 1) {
-            // เริ่มจับเวลา Long Press (500ms)
-            longPressTimer = setTimeout(() => {
-                isCrosshairActive = true;
-                isPanning = false; // หยุด Pan
-                crosshairPos = { x: clientX, y: clientY };
-                draw(); // วาด Crosshair ขึ้นมา
-            }, 500);
-        }
+    if (touches && touches.length === 1 && currentMode === 'pen') {
+        isCrosshairActive = true;
+        crosshairPos = { x: clientX, y: clientY };
+        draw();
     }
 
-    // --- ส่วนที่เคยหลุดไป ---
     if (touches && touches.length === 2) {
-        clearTimeout(longPressTimer); // ยกเลิก Crosshair ถ้าซูม
         isPanning = false; isDrawing = false;
         initialPinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
         lastCameraZ = camera.z;
@@ -196,32 +251,7 @@ function handleMove(e) {
     const clientX = touches ? touches[0].clientX : e.clientX;
     const clientY = touches ? touches[0].clientY : e.clientY;
 
-    // --- 💻 PC Logic (เมาส์) ---
-    if (!touches) {
-        if (!isPanning && !isDrawing) {
-            isCrosshairActive = true;
-            crosshairPos = { x: clientX, y: clientY };
-            draw();
-        }
-    }
-
-    // --- 📱 MOBILE Logic ---
-    if (touches) {
-        if (isCrosshairActive) {
-            crosshairPos = { x: clientX, y: clientY };
-            draw();
-            return; 
-        }
-
-        if (longPressTimer && isPanning) {
-            // ถ้านิ้วขยับ ยกเลิก Long Press
-            clearTimeout(longPressTimer); 
-            longPressTimer = null;
-        }
-    }
-
     if (touches && touches.length === 2 && initialPinchDist) {
-        // Zoom Logic
         const dist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
         const newZoom = lastCameraZ * (dist / initialPinchDist);
         if (newZoom > 0.1 && newZoom < 10) {
@@ -240,31 +270,35 @@ function handleMove(e) {
         const currWorld = getWorldPos(clientX, clientY);
         userLine.x2 = currWorld.x;
         userLine.y2 = currWorld.y;
+        if(touches) { isCrosshairActive = true; crosshairPos = { x: clientX, y: clientY }; }
         draw();
+    } else if (!touches && !isPanning) {
+        isCrosshairActive = true; crosshairPos = { x: clientX, y: clientY }; draw();
     }
 }
 
 function handleEnd(e) {
-    clearTimeout(longPressTimer); 
-    
-    // ถ้าเป็น Mobile และปล่อยมือ -> ปิด Crosshair
-    if (e.touches) {
-        isCrosshairActive = false; 
-        draw();
-    }
+    if (e.touches) isCrosshairActive = false; 
 
-    if(isDrawing) { isDrawing = false; checkAnswer(); }
+    if(isDrawing) {
+        // 🔥 จบการวาด แต่ยังไม่ตรวจ!
+        isDrawing = false;
+        
+        // อัปเดตปุ่มให้มี "ส่ง" กับ "ลบ" ขึ้นมา
+        updateButtons();
+    }
+    
     isPanning = false;
     if (e.touches && e.touches.length < 2) initialPinchDist = null;
+    draw();
 }
 
 // ==========================================
-// 🎨 Render (+ Hybrid Crosshair สีเทา)
+// 🎨 Rendering
 // ==========================================
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // 1. Layer กราฟ
     ctx.save();
     ctx.translate(camera.x, camera.y);
     ctx.scale(camera.z, camera.z);
@@ -284,42 +318,20 @@ function draw() {
     }
     ctx.restore(); 
 
-    // 2. Layer Crosshair
-    if (isCrosshairActive) {
-        drawCrosshair();
-    }
+    if (isCrosshairActive) drawCrosshair();
 }
 
 function drawCrosshair() {
     const x = crosshairPos.x;
     const y = crosshairPos.y;
-
-    ctx.beginPath();
-    ctx.setLineDash([6, 4]); // เส้นประ
-    ctx.lineWidth = 1.5;
-
-    // 1. ขอบขาว (รองพื้นเผื่อพื้นดำ)
+    ctx.beginPath(); ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; 
-    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
-    ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
-    ctx.stroke();
-
-    // 2. เส้นหลักสีเทาเข้ม (เผื่อพื้นขาว)
+    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     ctx.strokeStyle = "rgba(50, 50, 50, 0.9)"; 
-    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
-    ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
-    ctx.stroke();
-
+    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     ctx.setLineDash([]); 
-
-    // จุดเป้าหมาย
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 215, 0, 0.8)"; 
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1;
-    ctx.fill();
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = "rgba(255, 215, 0, 0.8)"; 
+    ctx.strokeStyle = "black"; ctx.lineWidth = 1; ctx.fill(); ctx.stroke();
 }
 
 function drawFiboLevels(line, color) {
@@ -344,6 +356,7 @@ function drawFiboLevels(line, color) {
     ctx.setLineDash([]); 
 }
 
+// 3. ระบบตรวจคำตอบ (เรียกเมื่อกดปุ่ม Submit เท่านั้น)
 function checkAnswer() {
     if(!userLine) return;
     const ans = steps[currentStepIdx].answer;
@@ -356,7 +369,7 @@ function checkAnswer() {
     if ((distStart < tolerance && distEnd < tolerance) || (distStartRev < tolerance && distEndRev < tolerance)) {
         showMsg("✅ ถูกต้อง!", true);
         setTimeout(() => { currentStepIdx++; loadStep(); hideMsg(); }, 1000);
-    } else { showMsg("❌ ยังไม่แม่น!", false); setTimeout(hideMsg, 1000); }
+    } else { showMsg("❌ ยังไม่ถูกครับ!", false); setTimeout(hideMsg, 1000); }
 }
 function showMsg(text, isSuccess) {
     const m = document.getElementById('msg-modal');
